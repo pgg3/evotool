@@ -41,5 +41,5 @@ class EohAdapter(ABC):
     
     @abstractmethod
     def parse_response(self, response_str: str) -> tuple[str, str]:
-        """Parse LLM response to extract solution string"""
+        """Parse LLM response to extract (code, algorithm) tuple"""
         pass

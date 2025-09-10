@@ -7,7 +7,7 @@ from .prompt_maker import PromptMaker
 from .response_parser import ResponseParser
 from .run_state_dict import AiCudaEngineerRunStateDict
 from .run_config import AiCudaEngineerConfig
-from ..base_method import Method
+from evotool.evo_method.base_method import Method
 
 class AiCudaEngineer(Method):
     def __init__(self, config:AiCudaEngineerConfig):

@@ -1,6 +1,6 @@
 from evotool.tools.llm import HttpsApi
 from evotool.evaluator import Evaluator
-from ..base_config import BaseConfig
+from evotool.evo_method.base_config import BaseConfig
 from typing import List
 class AiCudaEngineerConfig(BaseConfig):
     def __init__(

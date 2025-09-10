@@ -1,6 +1,6 @@
 from typing import Literal
 
-from ..base_run_state_dict import BaseRunStateDict
+from evotool.evo_method.base_run_state_dict import BaseRunStateDict
 
 class AiCudaEngineerRunStateDict(BaseRunStateDict):
     def __init__(
