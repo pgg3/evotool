@@ -77,7 +77,7 @@ class EohRunStateDict(BaseRunStateDict):
                 evaluation_res = EvaluationResult(
                     valid=eval_data['valid'],
                     score=eval_data['score'],
-                    additional_info_dict=eval_data['additional_info']
+                    additional_info=eval_data['additional_info']
                 )
             
             solution = Solution(
@@ -96,7 +96,7 @@ class EohRunStateDict(BaseRunStateDict):
                 evaluation_res = EvaluationResult(
                     valid=eval_data['valid'],
                     score=eval_data['score'],
-                    additional_info_dict=eval_data['additional_info']
+                    additional_info=eval_data['additional_info']
                 )
             
             solution = Solution(

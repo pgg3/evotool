@@ -11,7 +11,7 @@ class Es1p1Config(BaseConfig):
             running_llm: HttpsApi,
             evaluator: BaseEvaluator,
             adapter: Es1p1Adapter,
-            max_sample_nums: Optional[int] = 45,
+            max_sample_nums: int = 45,
             num_samplers: int = 5,
             num_evaluators: int = 5,
             verbose: bool = True

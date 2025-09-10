@@ -171,7 +171,7 @@ class Evaluator:
                 timeout_error_result['execution_time'] = execution_time
                 return False
 
-            time.sleep(0.1)
+            time.sleep(5)
 
         # Process ended naturally
         if process.is_alive():

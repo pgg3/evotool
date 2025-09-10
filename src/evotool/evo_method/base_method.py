@@ -69,6 +69,16 @@ class Method(ABC):
         # Return the kernel with minimum runtime
         best_kernel = max(valid_sols, key=lambda x: x.evaluation_res.score)
         return best_kernel
+
+    @staticmethod
+    def _get_best_sol(sol_list: List[Solution]):
+        best_valid_sol = Method._get_best_valid_sol(sol_list)
+        if best_valid_sol is not None:
+            best_sol = best_valid_sol
+        else:
+            best_sol = sol_list[0]
+        return best_sol
+
     @abstractmethod
     def _get_run_state_class(self) -> Type[BaseRunStateDict]:
         """Return the algorithm-specific RunStateDict class"""

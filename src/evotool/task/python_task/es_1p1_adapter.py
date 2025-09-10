@@ -13,7 +13,7 @@ class Es1p1PythonAdapter(Es1p1Adapter, ABC):
     def __init__(self, task_info: dict):
         super().__init__(task_info)
     
-    def get_prompt(self, best_sol: Solution) -> List[dict]:
+    def get_prompt(self, best_sol: Solution|None) -> List[dict]:
         """Generate prompt for Python code optimization."""
         content = self._get_system_prompt() + "\n\n"
         

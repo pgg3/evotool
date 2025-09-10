@@ -40,9 +40,9 @@ class CudaTaskInfoMaker(TaskInfoMaker):
 class CudaEvaluator(BaseEvaluator):
     """CUDA optimization evaluator with built-in evaluation"""
     def __init__(
-        self, task_info_dict: dict, temp_path, timeout_seconds: float = 30.0
+        self, task_info_dict: dict, temp_path
     ):
-        super().__init__(timeout_seconds=timeout_seconds)
+        super().__init__(task_info_dict)
         self.org_py_code = task_info_dict["org_py_code"]
         self.func_py_code = task_info_dict["func_py_code"]
         self.cuda_code = task_info_dict["cuda_code"]
@@ -68,7 +68,8 @@ class CudaEvaluator(BaseEvaluator):
                 "runtime": None,
                 "prof_string": None,
                 "compilation_error": cuda_comparison_result.get("compilation_error", False),
-                "comparison_error": not cuda_comparison_result.get("correctness", False)
+                "comparison_error": not cuda_comparison_result.get("correctness", False),
+                "error_msg": cuda_comparison_result.get("error_msg", None)
             }
             
             # Step 2: If correct, measure runtime performance
@@ -84,20 +85,21 @@ class CudaEvaluator(BaseEvaluator):
                 # Use runtime as score (lower is better for runtime optimization)
                 score = -cuda_runtime_result.get("runtime")
                 valid = True
+                additional_info["error_msg"] = cuda_runtime_result.get("error_msg", None)
             else:
                 score = None
                 valid = False
             return EvaluationResult(
                 valid=valid,
                 score=score,
-                additional_info_dict=additional_info
+                additional_info=additional_info
             )
             
         except Exception as e:
             return EvaluationResult(
                 valid=False,
                 score=None,
-                additional_info_dict={
+                additional_info={
                     "code": candidate_code,
                     "temp_str": None,
                     "runtime": None,

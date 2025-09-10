@@ -16,72 +16,69 @@ class Es1p1(Method):
     def run(self):
         """Main ES(1+1) algorithm execution"""
         self.verbose_title("ES(1+1) ALGORITHM STARTED")
-        run_state_dict = self._load_run_state()
-        if run_state_dict is None:
-            run_state_dict = Es1p1RunStateDict()
 
+        if "sample" not in self.run_state_dict.usage_history:
+            self.run_state_dict.usage_history["sample"] = []
 
-
-        self._save_run_state(run_state_dict)
-
-        if "sample" not in run_state_dict.usage_history:
-            run_state_dict.usage_history["sample"] = []
-
-        if len(run_state_dict.sol_history) == 0:
-            run_state_dict.sol_history.append(self.config.adapter.make_init_sol())
-            self._save_run_state(run_state_dict)
+        if len(self.run_state_dict.sol_history) == 0:
+            init_sol = self.config.adapter.make_init_sol()
+            if init_sol.evaluation_res is None:
+                init_sol.evaluation_res = self.config.evaluator.evaluate_code(init_sol.sol_string)
+            self.run_state_dict.sol_history.append(self.config.adapter.make_init_sol())
+            self._save_run_state_dict()
         
         # Main evolution loop
-        while ((self.config.max_sample_nums is None) or 
-               (run_state_dict.tot_sample_nums < self.config.max_sample_nums)):
+        while self.run_state_dict.tot_sample_nums < self.config.max_sample_nums:
             try:
-                start_sample = run_state_dict.tot_sample_nums + 1
-                end_sample = run_state_dict.tot_sample_nums + self.config.num_samplers
+                start_sample = self.run_state_dict.tot_sample_nums + 1
+                end_sample = self.run_state_dict.tot_sample_nums + self.config.num_samplers
                 self.verbose_info(
                     f"Samples  {start_sample} - {end_sample} / {self.config.max_sample_nums or 'unlimited'} "
                 )
 
-                best_sol = self._get_best_valid_sol(run_state_dict.sol_history)
+                best_sol = self._get_best_sol(self.run_state_dict.sol_history)
 
-                # Multi-threaded propose and evaluate
-                with concurrent.futures.ThreadPoolExecutor(max_workers=self.config.num_samplers) as propose_executor:
-                    # Submit multiple propose tasks in parallel
+                # Async propose and evaluate - single executor for both
+                with concurrent.futures.ThreadPoolExecutor(max_workers=self.config.num_samplers + self.config.num_evaluators) as executor:
+                    # Submit all propose tasks
                     propose_futures = []
+                    eval_futures = []
+                    
                     for i in range(self.config.num_samplers):
-                        future = propose_executor.submit(self._propose_sample, best_sol, i)
+                        future = executor.submit(self._propose_sample, best_sol, i)
                         propose_futures.append(future)
                     
-                    # Collect all proposed samples
-                    sol_to_eval = []
-                    
+                    # Process proposals as they complete and immediately submit for evaluation
                     for future in concurrent.futures.as_completed(propose_futures):
-                        new_sol, usage = future.result()
-                        run_state_dict.usage_history["sample"].append(usage)
-                        sol_to_eval.append(new_sol)
-
-                # Parallel evaluation using ThreadPoolExecutor
-                with concurrent.futures.ThreadPoolExecutor(max_workers=self.config.num_evaluators) as eval_executor:
-                    futures = []
-                    for i, sol in enumerate(sol_to_eval):
-                        future = eval_executor.submit(self.config.evaluator.evaluate_code, sol.sol_string)
-                        futures.append((future, i))
-                    
-                    # Collect results and update best
-                    for future, i in futures:
                         try:
-                            evaluation_res = future.result()
-                            sol_to_eval[i].evaluation_res = evaluation_res
+                            new_sol, usage = future.result()
+                            self.run_state_dict.usage_history["sample"].append(usage)
+                            
+                            # Immediately submit for evaluation without waiting
+                            eval_future = executor.submit(self.config.evaluator.evaluate_code, new_sol.sol_string)
+                            eval_futures.append((eval_future, new_sol))
+                        except Exception as e:
+                            self.verbose_info(f"Propose failed: {str(e)}")
+                            continue
+                    
+                    # Collect evaluation results as they complete
+                    for eval_future, sol in eval_futures:
+                        try:
+                            evaluation_res = eval_future.result()
+                            sol.evaluation_res = evaluation_res
                             score_str = "None" if evaluation_res.score is None else f"{evaluation_res.score}"
                             self.verbose_info(f"Sample evaluated - Score: {score_str}")
                             
                             # Add to history
-                            run_state_dict.sol_history.append(sol_to_eval[i])
-                            run_state_dict.tot_sample_nums += 1
-                            self._save_run_state(run_state_dict)
-                            
+                            self.run_state_dict.sol_history.append(sol)
+                            self.run_state_dict.tot_sample_nums += 1
+                            self._save_run_state_dict()
                         except Exception as e:
                             self.verbose_info(f"Evaluation failed: {str(e)}")
                             continue
+
+                            
+
             except KeyboardInterrupt:
                 self.verbose_info("Interrupted by user")
                 break
@@ -90,8 +87,8 @@ class Es1p1(Method):
                 continue
         
         # Mark as done and save final state
-        run_state_dict.is_done = True
-        self._save_run_state(run_state_dict)
+        self.run_state_dict.is_done = True
+        self._save_run_state_dict()
     
     def _propose_sample(self, best_sol: Solution, sampler_id: int) -> tuple[Solution, dict]:
         try:

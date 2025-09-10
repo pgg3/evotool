@@ -3,10 +3,10 @@ from abc import ABC, abstractmethod
 
 
 class EvaluationResult:
-    def __init__(self, valid, score, additional_info_dict):
+    def __init__(self, valid, score, additional_info):
         self.valid = valid
         self.score = score
-        self.additional_info = additional_info_dict
+        self.additional_info = additional_info
 
 class Solution:
     def __init__(self, sol_string, other_info:dict=None, evaluation_res: EvaluationResult=None):

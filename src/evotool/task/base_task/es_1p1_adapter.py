@@ -2,7 +2,7 @@ import abc
 from typing import List
 from abc import abstractmethod
 
-from .base_evaluator import Solution
+from .base_evaluator import Solution, EvaluationResult
 
 
 
@@ -12,7 +12,8 @@ class Es1p1Adapter(abc.ABC):
         self.task_info = task_info
 
     @abstractmethod
-    def get_sys_prompt(self):
+    def make_init_sol(self) -> Solution:
+        """Create initial solution from task info."""
         raise NotImplementedError()
 
     @abstractmethod
