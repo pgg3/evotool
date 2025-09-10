@@ -27,6 +27,7 @@ def get_py_runtime(py_code: str, timing_dict: dict) -> dict:
         with torch.no_grad():
             try:
                 model_inst = ns['Model'](*init_inputs)
+                model_inst = model_inst.cuda()
             except Exception as e:
                 result_dict['error_msg'] = f"Failed to create the model: {str(e)}"
                 return result_dict
