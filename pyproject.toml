@@ -1,0 +1,55 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "evotool"
+version = "0.1.0"
+description = "Evolutionary Optimization Toolkit using LLM"
+readme = "README.md"
+requires-python = ">=3.11"
+license = {text = "MIT"}
+authors = [
+    {name = "Ping GuO", email = "pguo6680@gmail.com"},
+]
+keywords = ["evolutionary", "optimization", "LLM", "toolkit"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+]
+dependencies = [
+    "natsort",
+    "numpy",
+    "portalocker",
+    "setuptools",
+    "scipy"
+]
+
+[project.optional-dependencies]
+cuda_engineering = [
+    "ninja",
+    "torch"
+]
+
+[project.urls]
+Homepage = "https://github.com/pgg3/evotool"
+Repository = "https://github.com/pgg3/evotool"
+Documentation = ""
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/evotool"]
+
+[tool.hatch.build.targets.sdist]
+include = ["src/evotool"]
+
+[tool.black]
+line-length = 88
+target-version = ['py311']
+
+[tool.isort]
+profile = "black"
+multi_line_output = 3
