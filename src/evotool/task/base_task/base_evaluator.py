@@ -14,11 +14,17 @@ class Solution:
         self.other_info = other_info
         self.evaluation_res = evaluation_res
 
+class TaskInfoMaker(ABC):
+    @classmethod
+    @abstractmethod
+    def make_task_info(cls, *args, **kwargs) -> dict:
+        raise NotImplementedError()
+
 class BaseEvaluator(ABC):
     def __init__(
-        self, timeout_seconds: float = 30.0
+        self, task_info:dict
     ):
-        self.timeout_seconds = timeout_seconds
+        self.task_info = task_info
     
     # Evaluation methods
     @abstractmethod

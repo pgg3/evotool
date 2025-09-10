@@ -1,18 +1,27 @@
 import concurrent.futures
+from typing import Type
 
 from .run_config import Es1p1Config
 from .run_state_dict import Es1p1RunStateDict
 from ..base_method import Method
 from evotool.task.base_task import Solution
+from ..base_run_state_dict import BaseRunStateDict
+
 
 class Es1p1(Method):
     def __init__(self, config: Es1p1Config):
         super().__init__(config)
         self.config = config
     
-    def run(self, run_state_dict: Es1p1RunStateDict):
+    def run(self):
         """Main ES(1+1) algorithm execution"""
         self.verbose_title("ES(1+1) ALGORITHM STARTED")
+        run_state_dict = self._load_run_state()
+        if run_state_dict is None:
+            run_state_dict = Es1p1RunStateDict()
+
+
+
         self._save_run_state(run_state_dict)
 
         if "sample" not in run_state_dict.usage_history:
@@ -99,4 +108,7 @@ class Es1p1(Method):
         except Exception as e:
             self.verbose_info(f"Sampler {sampler_id}: Failed to generate a samples - {str(e)}")
             return Solution(""), usage
+
+    def _get_run_state_class(self) -> Type[BaseRunStateDict]:
+        return Es1p1RunStateDict
 

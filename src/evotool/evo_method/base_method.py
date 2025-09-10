@@ -1,14 +1,21 @@
 import os
 from abc import abstractmethod, ABC
-from typing import List
+from typing import List, Type
 from evotool.task.base_task import Solution
 
 from .base_config import BaseConfig
 from .base_run_state_dict import BaseRunStateDict
 
+
 class Method(ABC):
     def __init__(self, config:BaseConfig):
         self.config = config
+        self.run_state_dict = self._load_run_state_dict()
+        self._save_run_state_dict()
+
+    @abstractmethod
+    def run(self, *args):
+        raise NotImplementedError()
 
     def verbose_info(self, message:str):
         if self.config.verbose:
@@ -36,6 +43,21 @@ class Method(ABC):
             right_dashes = "-" * (total_width - len(text) - padding)
             print(left_dashes + text + right_dashes)
 
+    def _save_run_state_dict(self):
+        """Save run state to file"""
+        self.run_state_dict.to_json_file(os.path.join(self.config.output_path, "run_state.json"))
+
+    def _load_run_state_dict(self) -> BaseRunStateDict|None:
+        """Load run state from file"""
+        run_state_class = self._get_run_state_class()
+        if os.path.exists(os.path.join(self.config.output_path, "run_state.json")):
+            self.verbose_info(f"Loading run state from file {os.path.join(self.config.output_path, 'run_state.json')}")
+            return run_state_class.from_json_file(os.path.join(self.config.output_path, "run_state.json"))
+        else:
+            run_state_dict = run_state_class(self.config.task_info)
+            self.verbose_info(f"Initialized run state dict.")
+            return run_state_dict
+
     @staticmethod
     def _get_best_valid_sol(sol_list: List[Solution]):
         valid_sols = []
@@ -47,7 +69,7 @@ class Method(ABC):
         # Return the kernel with minimum runtime
         best_kernel = max(valid_sols, key=lambda x: x.evaluation_res.score)
         return best_kernel
-
-    def _save_run_state(self, run_state_dict: BaseRunStateDict):
-        """Save run state to file"""
-        run_state_dict.to_json_file(os.path.join(self.config.output_path, "run_state.json"))
+    @abstractmethod
+    def _get_run_state_class(self) -> Type[BaseRunStateDict]:
+        """Return the algorithm-specific RunStateDict class"""
+        pass

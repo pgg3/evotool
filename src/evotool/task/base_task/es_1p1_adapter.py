@@ -12,9 +12,8 @@ class Es1p1Adapter(abc.ABC):
         self.task_info = task_info
 
     @abstractmethod
-    def make_init_sol(self) -> Solution:
+    def get_sys_prompt(self):
         raise NotImplementedError()
-
 
     @abstractmethod
     def get_prompt(self, best_sol:Solution) -> List[dict]:

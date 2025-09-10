@@ -9,6 +9,7 @@ class AiCudaEngineerRunStateDict(BaseRunStateDict):
             run_stage: Literal["0", "1", "2"] = "0",
             evo_gen_i: int = 0,
             optimization_history: list = None,
+            usage_history: dict = None,
             is_done: bool=False
     ):
         super().__init__(task_info)
@@ -18,7 +19,7 @@ class AiCudaEngineerRunStateDict(BaseRunStateDict):
         self.evo_gen_i = evo_gen_i
         self.optimization_history = optimization_history or []
 
-        self.usage_history = {}
+        self.usage_history = usage_history or {}
 
         self.is_done = is_done
 
@@ -41,6 +42,7 @@ class AiCudaEngineerRunStateDict(BaseRunStateDict):
             run_stage=data.get('run_stage', "0"),  # type: ignore
             evo_gen_i=data.get('evo_gen_i', 0),
             optimization_history=data.get('optimization_history', []),
+            usage_history=data.get('usage_history', {}),
             is_done=data.get('is_done', False)
         )
         instance.usage_history = data.get('usage_history', {})

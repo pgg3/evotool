@@ -1,10 +1,12 @@
 from evotool.tools.llm import HttpsApi
-from evotool.evaluator import Evaluator
+from ..evaluator import Evaluator
 from evotool.evo_method.base_config import BaseConfig
 from typing import List
 class AiCudaEngineerConfig(BaseConfig):
     def __init__(
-            self, output_path,
+            self,
+            task_info: dict,
+            output_path,
             evaluator: Evaluator,
             conversion_llm: HttpsApi,
             translation_llm: HttpsApi,
@@ -13,7 +15,7 @@ class AiCudaEngineerConfig(BaseConfig):
             rag_llm: HttpsApi,
             conversion_retry: int=10
     ):
-        super().__init__(output_path)
+        super().__init__(task_info, output_path)
         self.evaluator = evaluator
         self.conversion_retry = conversion_retry
         self.conversion_llm = conversion_llm

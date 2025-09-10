@@ -1,7 +1,41 @@
-import time
-from typing import Optional, List, Any, Tuple
-from ..base_task.base_evaluator import BaseEvaluator, EvaluationResult
-from evotool.evaluator import Evaluator
+import tempfile
+
+from .evaluator import Evaluator
+from ..base_task.base_evaluator import BaseEvaluator, EvaluationResult, TaskInfoMaker
+
+
+class CudaTaskInfoMaker(TaskInfoMaker):
+    @classmethod
+    def make_task_info(
+            cls,
+            evaluator: Evaluator,
+            gpu_type:str, cuda_version:str,
+            org_py_code:str, func_py_code:str, cuda_code:str,
+            **kwargs
+    ) -> dict:
+        task_info = {
+            "gpu_type": gpu_type,
+            "cuda_version": cuda_version,
+            "org_py_code": org_py_code,
+            "func_py_code": func_py_code,
+            "cuda_code": cuda_code
+        }
+        cuda_info_dict = evaluator.get_cuda_runtime_sandbox(
+            func_py_code, cuda_code
+        )
+        info_dict = {
+            "name": "baseline",
+            "thought": "baseline",
+            "code": cuda_code,
+            "temp_str": cuda_info_dict["temp_str"],
+            "runtime": cuda_info_dict["runtime"],
+            "prof_string": cuda_info_dict["prof_string"],
+            "compilation_error": False,
+            "comparison_error": False
+        }
+        task_info["cuda_info"] = info_dict
+        return task_info
+
 
 class CudaEvaluator(BaseEvaluator):
     """CUDA optimization evaluator with built-in evaluation"""

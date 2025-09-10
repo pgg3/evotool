@@ -5,8 +5,9 @@ from typing import List, Optional
 
 class Es1p1Config(BaseConfig):
     def __init__(
-            self, 
-            output_path,
+            self,
+            task_info: dict,
+            output_path: str,
             running_llm: HttpsApi,
             evaluator: BaseEvaluator,
             adapter: Es1p1Adapter,
@@ -15,7 +16,7 @@ class Es1p1Config(BaseConfig):
             num_evaluators: int = 5,
             verbose: bool = True
     ):
-        super().__init__(output_path, verbose)
+        super().__init__(task_info, output_path, verbose)
         self.evaluator = evaluator
         self.running_llm = running_llm
         self.adapter = adapter

@@ -8,7 +8,7 @@ def compile_cuda_code(cuda_code: str, temp_path: str) -> dict:
         "compile_success": False,
         "error_msg": None
     }
-    temp_str = os.path.basename(tempfile.mkstemp()[1])
+    temp_str = next(tempfile._get_candidate_names())
     result_dict["temp_str"] = temp_str
     use_temp_path = os.path.join(temp_path, temp_str)
     cuda_file_path = os.path.join(use_temp_path, "cuda_code.cu")

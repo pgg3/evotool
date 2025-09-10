@@ -7,7 +7,6 @@ class BaseRunStateDict(ABC):
             self, task_info:dict
     ):
         self.task_info = task_info
-        self.usage_history = {}
 
     @abstractmethod
     def to_json(self) -> dict:

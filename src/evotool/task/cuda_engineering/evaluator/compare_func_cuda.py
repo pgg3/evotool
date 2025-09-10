@@ -17,7 +17,7 @@ def compare_func_cuda(func_code: str, cuda_code: str, temp_path:str, temp_str:st
         "compilation_error": False
     }
     if temp_str is None:
-        temp_str = os.path.basename(tempfile.mkstemp()[1])
+        temp_str = next(tempfile._get_candidate_names())
         result_dict['temp_str'] = temp_str
 
     use_temp_path = os.path.join(temp_path, temp_str)
