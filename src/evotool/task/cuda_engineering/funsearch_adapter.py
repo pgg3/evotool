@@ -15,7 +15,7 @@ class FunSearchCudaAdapter(FunSearchAdapter):
         evaluation_res = EvaluationResult(
             valid=True,
             score=-self.task_info["cuda_info"]["runtime"],
-            additional_info_dict=dict()
+            additional_info=dict()
         )
         init_sol.evaluation_res = evaluation_res
         return init_sol
