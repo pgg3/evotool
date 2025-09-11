@@ -33,7 +33,7 @@ dependencies = [
 cuda_engineering = [
     "ninja",
     "torch",
-    "psutils"
+    "psutil"
 ]
 
 [project.urls]

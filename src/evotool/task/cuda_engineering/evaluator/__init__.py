@@ -166,8 +166,14 @@ class Evaluator:
 
             # Check timeout only for execution time (not lock wait time)
             if execution_time > execution_timeout:
+                # Give process a chance to cleanup locks gracefully
                 process.terminate()
-                process.join()
+                # Wait up to 5 seconds for graceful shutdown
+                process.join(timeout=5)
+                if process.is_alive():
+                    # Force kill if still alive
+                    process.kill()
+                    process.join()
                 timeout_error_result['execution_time'] = execution_time
                 return False
 
@@ -175,8 +181,14 @@ class Evaluator:
 
         # Process ended naturally
         if process.is_alive():
+            # Give process a chance to cleanup locks gracefully
             process.terminate()
-            process.join()
+            # Wait up to 5 seconds for graceful shutdown
+            process.join(timeout=5)
+            if process.is_alive():
+                # Force kill if still alive
+                process.kill()
+                process.join()
         return True
 
     @staticmethod
