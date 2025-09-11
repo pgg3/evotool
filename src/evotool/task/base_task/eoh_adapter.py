@@ -8,6 +8,10 @@ class EohAdapter(ABC):
     
     def __init__(self, task_info: dict):
         self.task_info = task_info
+
+    @abstractmethod
+    def _get_base_task_description(self) -> str:
+        pass
     
     @abstractmethod
     def make_init_sol(self) -> Solution:

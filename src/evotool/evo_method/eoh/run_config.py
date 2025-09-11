@@ -6,6 +6,7 @@ from typing import Optional, Literal
 class EohConfig(BaseConfig):
     def __init__(
             self,
+            task_info: dict,
             output_path,
             running_llm: HttpsApi,
             evaluator: BaseEvaluator,
@@ -21,7 +22,7 @@ class EohConfig(BaseConfig):
             num_evaluators: int = 1,
             verbose: bool = True
     ):
-        super().__init__(output_path, verbose)
+        super().__init__(task_info, output_path, verbose)
         self.running_llm = running_llm
         self.evaluator = evaluator
         self.adapter = adapter
