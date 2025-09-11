@@ -1,4 +1,6 @@
 import tempfile
+import os
+import shutil
 
 from .evaluator import Evaluator
 from ..base_task.base_evaluator import BaseEvaluator, EvaluationResult, TaskInfoMaker
@@ -20,6 +22,8 @@ class CudaTaskInfoMaker(TaskInfoMaker):
             "func_py_code": func_py_code,
             "cuda_code": cuda_code
         }
+        LOCK_FILE = os.path.join(tempfile.gettempdir(), "evotool_cross_process.lock")
+        shutil.rmtree(LOCK_FILE, ignore_errors=True)
         cuda_info_dict = evaluator.get_cuda_runtime_sandbox(
             func_py_code, cuda_code
         )
