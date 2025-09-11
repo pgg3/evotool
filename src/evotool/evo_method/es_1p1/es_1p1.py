@@ -21,10 +21,27 @@ class Es1p1(Method):
             self.run_state_dict.usage_history["sample"] = []
 
         if len(self.run_state_dict.sol_history) == 0:
-            init_sol = self.config.adapter.make_init_sol()
-            if init_sol.evaluation_res is None:
-                init_sol.evaluation_res = self.config.evaluator.evaluate_code(init_sol.sol_string)
-            self.run_state_dict.sol_history.append(self.config.adapter.make_init_sol())
+            # Try to create and evaluate initial solution up to 3 times
+            init_sol = None
+            for attempt in range(3):
+                try:
+                    candidate_sol = self.config.adapter.make_init_sol()
+                    if candidate_sol.evaluation_res is None:
+                        candidate_sol.evaluation_res = self.config.evaluator.evaluate_code(candidate_sol.sol_string)
+                    
+                    if candidate_sol.evaluation_res and candidate_sol.evaluation_res.valid:
+                        init_sol = candidate_sol
+                        break
+                    else:
+                        self.verbose_info(f"Initial solution attempt {attempt + 1} failed: invalid evaluation result")
+                except Exception as e:
+                    self.verbose_info(f"Initial solution attempt {attempt + 1} failed with exception: {e}")
+            
+            if init_sol is None:
+                print("Warning: Failed to create valid initial solution after 3 attempts. Exiting.")
+                return
+            
+            self.run_state_dict.sol_history.append(init_sol)
             self._save_run_state_dict()
         
         # Main evolution loop

@@ -50,9 +50,26 @@ class FunSearch(Method):
         
         # Initialize with seed program if sol_history is empty
         if len(self.run_state_dict.sol_history) == 0:
-            initial_sol = self.config.adapter.make_init_sol()
-            if initial_sol.evaluation_res is None:
-                initial_sol.evaluation_res = self.config.evaluator.evaluate_code(initial_sol.sol_string)
+            # Try to create and evaluate initial solution up to 3 times
+            initial_sol = None
+            for attempt in range(3):
+                try:
+                    candidate_sol = self.config.adapter.make_init_sol()
+                    if candidate_sol.evaluation_res is None:
+                        candidate_sol.evaluation_res = self.config.evaluator.evaluate_code(candidate_sol.sol_string)
+                    
+                    if candidate_sol.evaluation_res and candidate_sol.evaluation_res.valid:
+                        initial_sol = candidate_sol
+                        break
+                    else:
+                        self.verbose_info(f"Initial solution attempt {attempt + 1} failed: invalid evaluation result")
+                except Exception as e:
+                    self.verbose_info(f"Initial solution attempt {attempt + 1} failed with exception: {e}")
+            
+            if initial_sol is None:
+                print("Warning: Failed to create valid initial solution after 3 attempts. Exiting.")
+                return
+            
             programs_db.register_solution(initial_sol)  # Register to all islands
             self.run_state_dict.sol_history.append(initial_sol)  # Add to sol_history but don't count in sample_nums
             
