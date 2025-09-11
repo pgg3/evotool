@@ -151,7 +151,7 @@ class AiCudaEngineer(Method):
         if "2" not in self.run_state_dict.usage_history:
             self.run_state_dict.usage_history["2"] = []
 
-        for gen_i in range(self.run_state_dict.evo_gen_i, 3):
+        for gen_i in range(self.run_state_dict.evo_gen_i, 10):
             self.verbose_gen(f"Gen {gen_i + 1}")
             top_5_kernel = self._get_valid_top_5_from_slow_to_fast(self.run_state_dict.optimization_history)
             best_kernel = self._get_best_valid_kernel(self.run_state_dict.optimization_history)
@@ -265,7 +265,7 @@ class AiCudaEngineer(Method):
             func_runtime=self.run_state_dict.task_info["func_runtime"],
             cuda_indiv=cuda_individual
         )
-        return self._process_proposal_and_evaluate_common(task_index, self.run_state_dict, prompt, "RAG", use_rag_llm=True)
+        return self._process_proposal_and_evaluate_common(task_index, prompt, "RAG", use_rag_llm=True)
     
     def _process_proposal_and_evaluate_common(self, llm_index, prompt, prompt_type, use_rag_llm=False):
         assert isinstance(self.config, AiCudaEngineerConfig)
