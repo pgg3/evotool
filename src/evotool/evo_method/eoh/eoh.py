@@ -11,52 +11,50 @@ class Eoh(Method):
         super().__init__(config)
         self.config = config
 
-    def run(self, run_state_dict: EohRunStateDict):
+    def run(self):
         """Main EoH algorithm execution"""
         self.verbose_title("EOH ALGORITHM STARTED")
-        self._save_run_state(run_state_dict)
 
-        if "sample" not in run_state_dict.usage_history:
-            run_state_dict.usage_history["sample"] = []
+        if "sample" not in self.run_state_dict.usage_history:
+            self.run_state_dict.usage_history["sample"] = []
 
         # Initialize with seed solution if sol_history is empty
-        if len(run_state_dict.sol_history) == 0:
+        if len(self.run_state_dict.sol_history) == 0:
             initial_sol = self.config.adapter.make_init_sol()
-            run_state_dict.sol_history.append(initial_sol)
-            run_state_dict.population.append(initial_sol)
-            self._save_run_state(run_state_dict)
+            self.run_state_dict.sol_history.append(initial_sol)
+            self.run_state_dict.population.append(initial_sol)
+            self._save_run_state_dict()
             self.verbose_info(f"Initialized with baseline solution (score: {initial_sol.evaluation_res.score if initial_sol.evaluation_res else 'None'})")
 
         # Initialize population if starting from scratch
-        if run_state_dict.generation == 0:
-            self._initialize_population(run_state_dict)
+        if self.run_state_dict.generation == 0:
+            self._initialize_population()
             
         # Check if we have enough individuals for selection
-        valid_population = self._get_valid_population(run_state_dict.population)
+        valid_population = self._get_valid_population(self.run_state_dict.population)
         if len(valid_population) < self.config.selection_num:
             self.verbose_info(f'The search is terminated since EoH unable to obtain {self.config.selection_num} feasible algorithms during initialization.')
             return
         
         # Main evolution loop - moved loop control logic here
-        while ((self.config.max_generations is None or run_state_dict.generation < self.config.max_generations) and 
-               (self.config.max_sample_nums is None or run_state_dict.tot_sample_nums < self.config.max_sample_nums)):
+        while (self.run_state_dict.generation < self.config.max_generations) and (self.run_state_dict.tot_sample_nums < self.config.max_sample_nums):
             try:
-                self.verbose_info(f"Generation {run_state_dict.generation} - Sample {run_state_dict.tot_sample_nums + 1} - {run_state_dict.tot_sample_nums + self.config.num_samplers} / {self.config.max_sample_nums or 'unlimited'}")
+                self.verbose_info(f"Generation {self.run_state_dict.generation} - Sample {self.run_state_dict.tot_sample_nums + 1} - {self.run_state_dict.tot_sample_nums + self.config.num_samplers} / {self.config.max_sample_nums or 'unlimited'}")
                 
                 # Apply operators in parallel for this generation
-                new_solutions = self._apply_operators_parallel(run_state_dict)
+                new_solutions = self._apply_operators_parallel()
                 
                 # Add new solutions to both sol_history and population
                 for sol in new_solutions:
-                    run_state_dict.sol_history.append(sol)
-                    run_state_dict.population.append(sol)
-                    run_state_dict.tot_sample_nums += 1
+                    self.run_state_dict.sol_history.append(sol)
+                    self.run_state_dict.population.append(sol)
+                    self.run_state_dict.tot_sample_nums += 1
                 
                 # Manage population size - keep only the best pop_size individuals
-                self._manage_population_size(run_state_dict)
+                self._manage_population_size()
                 
-                run_state_dict.generation += 1
-                self._save_run_state(run_state_dict)
+                self.run_state_dict.generation += 1
+                self._save_run_state_dict()
                 
             except KeyboardInterrupt:
                 self.verbose_info("Evolution interrupted by user")
@@ -66,49 +64,49 @@ class Eoh(Method):
                 continue
         
         # Mark as done and save final state
-        run_state_dict.is_done = True
-        self._save_run_state(run_state_dict)
+        self.run_state_dict.is_done = True
+        self._save_run_state_dict()
 
-    def _initialize_population(self, run_state_dict: EohRunStateDict):
+    def _initialize_population(self):
         """Initialize population using i1 prompt - keep generating until we have enough valid solutions"""
         self.verbose_info("Initializing population...")
         
         initial_sample_limit = min(self.config.max_sample_nums or float('inf'), 200)  # Reasonable limit
         
         # Keep generating until we have pop_size valid solutions or hit sample limit
-        while (len(self._get_valid_population(run_state_dict.population)) < self.config.pop_size and 
-               run_state_dict.tot_sample_nums < initial_sample_limit):
+        while (len(self._get_valid_population(self.run_state_dict.population)) < self.config.pop_size and 
+               self.run_state_dict.tot_sample_nums < initial_sample_limit):
             
             # Generate multiple solutions in parallel
-            new_solutions = self._generate_initial_solutions(run_state_dict)
+            new_solutions = self._generate_initial_solutions()
             
             # Evaluate solutions in parallel
             evaluated_solutions = self._evaluate_solutions(new_solutions)
             
             # Add all solutions to both sol_history and population
             for sol in evaluated_solutions:
-                run_state_dict.sol_history.append(sol)
-                run_state_dict.population.append(sol)
-                run_state_dict.tot_sample_nums += 1
+                self.run_state_dict.sol_history.append(sol)
+                self.run_state_dict.population.append(sol)
+                self.run_state_dict.tot_sample_nums += 1
                 
                 score_str = "None" if not sol.evaluation_res or sol.evaluation_res.score is None else f"{sol.evaluation_res.score}"
                 valid_str = "Valid" if sol.evaluation_res and sol.evaluation_res.valid else "Invalid"
-                self.verbose_info(f"Initial sample {run_state_dict.tot_sample_nums} - Score: {score_str} ({valid_str})")
+                self.verbose_info(f"Initial sample {self.run_state_dict.tot_sample_nums} - Score: {score_str} ({valid_str})")
             
-            valid_count = len(self._get_valid_population(run_state_dict.population))
+            valid_count = len(self._get_valid_population(self.run_state_dict.population))
             self.verbose_info(f"Valid solutions: {valid_count}/{self.config.pop_size}")
             
-            self._save_run_state(run_state_dict)
+            self._save_run_state_dict()
         
-        valid_population = self._get_valid_population(run_state_dict.population)
+        valid_population = self._get_valid_population(self.run_state_dict.population)
         if len(valid_population) >= self.config.selection_num:
-            run_state_dict.generation = 1
-            self._save_run_state(run_state_dict)
+            self.run_state_dict.generation = 1
+            self._save_run_state_dict()
             self.verbose_info(f"Initialization completed with {len(valid_population)} valid solutions")
         else:
             self.verbose_info(f"Warning: Only {len(valid_population)} valid solutions obtained, need at least {self.config.selection_num}")
 
-    def _generate_initial_solutions(self, run_state_dict: EohRunStateDict) -> List[Solution]:
+    def _generate_initial_solutions(self) -> List[Solution]:
         """Generate initial solutions using multithreading"""
         new_solutions = []
         
@@ -123,7 +121,7 @@ class Eoh(Method):
             for future in concurrent.futures.as_completed(futures):
                 try:
                     new_sol, usage = future.result()
-                    run_state_dict.usage_history["sample"].append(usage)
+                    self.run_state_dict.usage_history["sample"].append(usage)
                     new_solutions.append(new_sol)
                 except Exception as e:
                     self.verbose_info(f"Initial solution generation failed: {str(e)}")
@@ -177,7 +175,7 @@ class Eoh(Method):
         return sol_history[-1] if sol_history else None
 
 
-    def _apply_operators_parallel(self, run_state_dict: EohRunStateDict) -> List[Solution]:
+    def _apply_operators_parallel(self) -> List[Solution]:
         """Apply all operators in parallel and return new solutions"""
         new_solutions = []
         
@@ -185,21 +183,21 @@ class Eoh(Method):
         operator_tasks = []
         
         # E1 operator - crossover
-        selected_individuals = self._select_individuals(run_state_dict, self.config.selection_num)
+        selected_individuals = self._select_individuals(self.config.selection_num)
         if selected_individuals:
             prompt_content = self.config.adapter.get_prompt_e1(selected_individuals)
             operator_tasks.append(("E1", prompt_content))
         
         # E2 operator - guided crossover
         if self.config.use_e2_operator:
-            selected_individuals = self._select_individuals(run_state_dict, self.config.selection_num)
+            selected_individuals = self._select_individuals(self.config.selection_num)
             if selected_individuals:
                 prompt_content = self.config.adapter.get_prompt_e2(selected_individuals)
                 operator_tasks.append(("E2", prompt_content))
         
         # M1 operator - mutation
         if self.config.use_m1_operator:
-            selected_individuals = self._select_individuals(run_state_dict, 1)
+            selected_individuals = self._select_individuals(1)
             if selected_individuals:
                 selected_individual = selected_individuals[0]
                 prompt_content = self.config.adapter.get_prompt_m1(selected_individual)
@@ -207,7 +205,7 @@ class Eoh(Method):
         
         # M2 operator - parameter mutation
         if self.config.use_m2_operator:
-            selected_individuals = self._select_individuals(run_state_dict, 1)
+            selected_individuals = self._select_individuals(1)
             if selected_individuals:
                 selected_individual = selected_individuals[0]
                 prompt_content = self.config.adapter.get_prompt_m2(selected_individual)
@@ -229,7 +227,7 @@ class Eoh(Method):
                         solution, usage = future.result()
                         
                         # Add usage history
-                        run_state_dict.usage_history["sample"].append(usage)
+                        self.run_state_dict.usage_history["sample"].append(usage)
                         
                         # Evaluate solution
                         if solution.sol_string.strip():
@@ -241,7 +239,7 @@ class Eoh(Method):
                         # Log result
                         score_str = "None" if not solution.evaluation_res or solution.evaluation_res.score is None else f"{solution.evaluation_res.score}"
                         valid_str = "Valid" if solution.evaluation_res and solution.evaluation_res.valid else "Invalid"
-                        self.verbose_info(f"{operator_name} Gen {run_state_dict.generation} - Score: {score_str} ({valid_str})")
+                        self.verbose_info(f"{operator_name} Gen {self.run_state_dict.generation} - Score: {score_str} ({valid_str})")
                         
                     except Exception as e:
                         self.verbose_info(f"Error in {operator_name}: {str(e)}")
@@ -252,12 +250,12 @@ class Eoh(Method):
 
     def _manage_population_size(self, run_state_dict: EohRunStateDict):
         """Manage population size - keep only the best pop_size individuals"""
-        if len(run_state_dict.population) <= self.config.pop_size:
+        if len(self.run_state_dict.population) <= self.config.pop_size:
             return
             
         # Separate valid and invalid solutions
-        valid_solutions = self._get_valid_population(run_state_dict.population)
-        invalid_solutions = [sol for sol in run_state_dict.population if sol not in valid_solutions]
+        valid_solutions = self._get_valid_population(self.run_state_dict.population)
+        invalid_solutions = [sol for sol in self.run_state_dict.population if sol not in valid_solutions]
         
         # Sort valid solutions by score (descending - higher is better)
         valid_solutions.sort(key=lambda x: x.evaluation_res.score if x.evaluation_res and x.evaluation_res.score is not None else float('-inf'), reverse=True)
@@ -274,21 +272,21 @@ class Eoh(Method):
         if remaining_slots > 0 and invalid_solutions:
             new_population.extend(invalid_solutions[-remaining_slots:])  # Keep most recent invalid ones
         
-        run_state_dict.population = new_population
+        self.run_state_dict.population = new_population
         
         valid_count = len(self._get_valid_population(new_population))
         self.verbose_info(f"Population managed: {len(new_population)} total ({valid_count} valid, {len(new_population)-valid_count} invalid)")
 
 
 
-    def _select_individuals(self, run_state_dict: EohRunStateDict, num_select: int) -> List[Solution]:
+    def _select_individuals(self, num_select: int) -> List[Solution]:
         """Select individuals from population for operators"""
-        valid_population = [sol for sol in run_state_dict.population 
+        valid_population = [sol for sol in self.run_state_dict.population 
                           if sol.evaluation_res and sol.evaluation_res.valid and sol.evaluation_res.score is not None]
         
         if len(valid_population) == 0:
             # Fallback to any available solutions
-            return run_state_dict.population[:num_select] if run_state_dict.population else []
+            return self.run_state_dict.population[:num_select] if self.run_state_dict.population else []
         
         # Sort by score (assuming higher is better)
         valid_population.sort(key=lambda x: x.evaluation_res.score, reverse=True)
