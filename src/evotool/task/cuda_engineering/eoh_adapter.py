@@ -43,8 +43,9 @@ class EohCudaAdapter(EohAdapter):
     def make_init_sol(self) -> Solution:
         """Create initial solution from the baseline CUDA code"""
         from evotool.task.base_task import EvaluationResult
-        
-        init_sol = Solution(self.task_info["cuda_code"])
+
+        other_info={'algorithm': "None"}
+        init_sol = Solution(self.task_info["cuda_code"], other_info)
         evaluation_res = EvaluationResult(
             valid=True,
             score=-self.task_info["cuda_info"]["runtime"],  # Negative because lower runtime is better

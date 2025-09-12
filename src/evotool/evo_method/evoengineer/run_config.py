@@ -13,7 +13,7 @@ class EvoEngineerConfig(BaseConfig):
             adapter: EvoEngineerAdapter,
             max_generations: int = 10,
             max_sample_nums: int = 45,
-            pop_size: int = 5,
+            pop_size: int = 4,
             num_samplers: int = 5,
             num_evaluators: int = 5,
             verbose: bool = True

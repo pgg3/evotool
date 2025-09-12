@@ -33,13 +33,14 @@ class EvoEngineerAdapter(ABC):
         pass
     
     @abstractmethod
-    def get_operator_prompt(self, operator_name: str, selected_individuals: List[Solution], **kwargs) -> List[dict]:
+    def get_operator_prompt(self, operator_name: str, selected_individuals: List[Solution], current_best_sol: Solution, random_thoughts: List[str], **kwargs) -> List[dict]:
         """Generate prompt for any operator
         
         Args:
             operator_name: Name of the operator 
             selected_individuals: Selected individuals for the operator
             **kwargs: Additional operator-specific parameters
+            :param current_best_sol:
         """
         pass
     

@@ -99,7 +99,9 @@ class EvoEngineer(Method):
         valid_sols = [sol for sol in sol_history if sol.evaluation_res and sol.evaluation_res.valid and sol.evaluation_res.score is not None]
         if valid_sols:
             return max(valid_sols, key=lambda x: x.evaluation_res.score)
-        return sol_history[-1] if sol_history else None
+        return None
+
+
     
     def _register_solution(self, solution: Solution):
         """Register a new solution to both sol_history and population"""
@@ -116,13 +118,22 @@ class EvoEngineer(Method):
         with concurrent.futures.ThreadPoolExecutor(max_workers=self.config.num_samplers + self.config.num_evaluators) as executor:
             generate_futures = []
             eval_futures = []
+
+            # Calculate target samples: multiple of num_operators, not exceeding num_samplers
+            num_operators = len(operators)
             
-            # Submit generation tasks up to num_samplers limit
-            operators_to_use = operators[:self.config.num_samplers]
-            for i, operator in enumerate(operators_to_use):
-                selected_individuals = self._select_individuals_for_operator(operator)
-                future = executor.submit(self._generate_single_solution, operator, selected_individuals, i)
-                generate_futures.append((operator.name, future))
+            max_multiplier = self.config.num_samplers // num_operators
+            target_samples = max_multiplier * num_operators  # Largest multiple of num_operators <= num_samplers
+            samples_per_operator = target_samples // num_operators  # This equals max_multiplier
+            
+            # Generate samples: each operator gets exactly samples_per_operator samples
+            sample_id = 0
+            for operator in operators:
+                for _ in range(samples_per_operator):
+                    selected_individuals = self._select_individuals_for_operator(operator)
+                    future = executor.submit(self._generate_single_solution, operator, selected_individuals, sample_id)
+                    generate_futures.append((operator.name, future))
+                    sample_id += 1
             
             # Process generations as they complete and immediately submit for evaluation
             future_to_operator = {future: operator_name for operator_name, future in generate_futures}
@@ -196,30 +207,44 @@ class EvoEngineer(Method):
         self.verbose_info(f"Population managed: {len(new_population)} total ({valid_count} valid, {len(new_population)-valid_count} invalid)")
 
     def _select_individuals_for_operator(self, operator) -> List[Solution]:
-        """Select individuals for an operator based on its selection_size"""
-        if operator.selection_size == 0:
-            return []  # Init operators don't need individuals
-            
-        valid_population = [sol for sol in self.run_state_dict.population 
-                          if sol.evaluation_res and sol.evaluation_res.valid and sol.evaluation_res.score is not None]
+        """Select individuals for an operator using rank-based probability selection"""
+        import numpy as np
+        import math
         
-        if len(valid_population) == 0:
+        if operator.selection_size <= 0:
+            return []  # Init operators or invalid selection size
+            
+        # Filter valid solutions with finite scores (including NaN check)
+        funcs = [sol for sol in self.run_state_dict.population 
+                if sol.evaluation_res and sol.evaluation_res.valid and sol.evaluation_res.score is not None 
+                and not math.isinf(sol.evaluation_res.score) and not math.isnan(sol.evaluation_res.score)]
+        
+        if len(funcs) == 0:
             # Fallback to any available solutions
             return self.run_state_dict.population[:operator.selection_size] if self.run_state_dict.population else []
         
         # Sort by score (assuming higher is better)
-        valid_population.sort(key=lambda x: x.evaluation_res.score, reverse=True)
+        func = sorted(funcs, key=lambda f: f.evaluation_res.score, reverse=True)
         
-        # Select top individuals
-        if len(valid_population) >= operator.selection_size:
-            return valid_population[:operator.selection_size]
-        else:
-            return valid_population
+        # Create rank-based probability distribution
+        p = [1 / (r + len(func)) for r in range(len(func))]
+        p = np.array(p)
+        p = p / np.sum(p)
+        
+        # Select individuals based on probability
+        selected = []
+        for _ in range(min(operator.selection_size, len(func))):  # Ensure we don't select more than available
+            chosen = np.random.choice(func, p=p)
+            selected.append(chosen)
+        
+        return selected
 
     def _generate_single_solution(self, operator, selected_individuals: List[Solution], sampler_id: int) -> tuple[Solution, dict]:
         """Generate a single solution using an operator"""
         try:
-            prompt_content = self.config.adapter.get_operator_prompt(operator.name, selected_individuals)
+            current_best_sol = self._get_best_sol(self.run_state_dict.sol_history)
+            random_3_thought = self._get_n_random_thought(3)
+            prompt_content = self.config.adapter.get_operator_prompt(operator.name, selected_individuals, current_best_sol, random_3_thought)
             response, usage = self.config.running_llm.get_response(prompt_content)
             new_sol = self.config.adapter.parse_response(response)
             self.verbose_info(f"Sampler {sampler_id}: Generated {operator.name} solution")
@@ -228,5 +253,23 @@ class EvoEngineer(Method):
             self.verbose_info(f"Sampler {sampler_id}: Failed to generate {operator.name} solution - {str(e)}")
             return Solution(""), {}
 
+    def _get_n_random_thought(self, n: int) -> List[str]:
+        """Get n random thoughts from solutions in the current population"""
+        import random
+
+        # Get all thoughts from current population
+        thoughts = []
+        for sol in self.run_state_dict.population:
+            if sol.other_info and "thought" in sol.other_info:
+                thought = sol.other_info["thought"]
+                if thought:  # Only add non-empty thoughts
+                    thoughts.append(thought)
+
+        # If we don't have enough thoughts, return all available ones
+        if len(thoughts) <= n:
+            return thoughts
+
+        # Randomly sample n thoughts without replacement
+        return random.sample(thoughts, n)
     def _get_run_state_class(self) -> Type[BaseRunStateDict]:
         return EvoEngineerRunStateDict

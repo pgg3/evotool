@@ -13,6 +13,7 @@ class CudaTaskInfoMaker(TaskInfoMaker):
             evaluator: Evaluator,
             gpu_type:str, cuda_version:str,
             org_py_code:str, func_py_code:str, cuda_code:str,
+            fake_mode:bool=False,
             **kwargs
     ) -> dict:
         task_info = {
@@ -24,6 +25,19 @@ class CudaTaskInfoMaker(TaskInfoMaker):
         }
         LOCK_FILE = os.path.join(tempfile.gettempdir(), "evotool_cross_process.lock")
         shutil.rmtree(LOCK_FILE, ignore_errors=True)
+        if fake_mode:
+            info_dict = {
+                "name": "baseline",
+                "thought": "baseline",
+                "code": cuda_code,
+                "temp_str": "xxx",
+                "runtime": 0.1,
+                "prof_string": "xxx",
+                "compilation_error": False,
+                "comparison_error": False
+            }
+            task_info["cuda_info"] = info_dict
+            return task_info
         cuda_info_dict = evaluator.get_cuda_runtime_sandbox(
             func_py_code, cuda_code
         )
@@ -44,7 +58,7 @@ class CudaTaskInfoMaker(TaskInfoMaker):
 class CudaEvaluator(BaseEvaluator):
     """CUDA optimization evaluator with built-in evaluation"""
     def __init__(
-        self, task_info_dict: dict, temp_path
+        self, task_info_dict: dict, temp_path, fake_mode: bool=False
     ):
         super().__init__(task_info_dict)
         self.org_py_code = task_info_dict["org_py_code"]
@@ -53,12 +67,28 @@ class CudaEvaluator(BaseEvaluator):
         self.temp_path = temp_path
 
         self.evaluator = Evaluator(temp_path)
+        self.fake_mode = fake_mode
     
     # Evaluation methods
     def evaluate_code(self, candidate_code: str) -> EvaluationResult:
         """Evaluate CUDA kernel code using the original evaluator"""
         
         try:
+            if self.fake_mode:
+                return EvaluationResult(
+                valid=True,
+                score=-0.1,
+                additional_info={
+                    "code": candidate_code,
+                    "temp_str": None,
+                    "runtime": 0.1,
+                    "prof_string": None,
+                    "compilation_error": False,
+                    "comparison_error": False,
+                    "error_msg": None,
+                    "exception": None
+                }
+            )
             # Step 1: Evaluate CUDA code correctness
             cuda_comparison_result = self.evaluator.compare_func_cuda_sandbox(
                 self.func_py_code,

@@ -4,13 +4,13 @@ build-backend = "hatchling.build"
 
 [project]
 name = "evotoolkit"
-version = "0.1.0b2"
+version = "0.1.0b3"
 description = "LLM-driven code evolution method library."
 readme = "README.md"
 requires-python = ">=3.11"
 license = {text = "MIT"}
 authors = [
-    {name = "Ping GuO", email = "pguo6680@gmail.com"},
+    {name = "Ping Guo", email = "pguo6680@gmail.com"},
 ]
 keywords = ["evolutionary", "optimization", "LLM", "toolkit"]
 classifiers = [

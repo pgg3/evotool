@@ -204,14 +204,14 @@ class Eoh(Method):
         if selected_individuals:
             prompt_content = self.config.adapter.get_prompt_e1(selected_individuals)
             operator_tasks.append(("E1", prompt_content))
-        
+
         # E2 operator - guided crossover
         if self.config.use_e2_operator:
             selected_individuals = self._select_individuals(self.config.selection_num)
             if selected_individuals:
                 prompt_content = self.config.adapter.get_prompt_e2(selected_individuals)
                 operator_tasks.append(("E2", prompt_content))
-        
+
         # M1 operator - mutation
         if self.config.use_m1_operator:
             selected_individuals = self._select_individuals(1)
@@ -219,7 +219,7 @@ class Eoh(Method):
                 selected_individual = selected_individuals[0]
                 prompt_content = self.config.adapter.get_prompt_m1(selected_individual)
                 operator_tasks.append(("M1", prompt_content))
-        
+
         # M2 operator - parameter mutation
         if self.config.use_m2_operator:
             selected_individuals = self._select_individuals(1)
@@ -235,10 +235,21 @@ class Eoh(Method):
                 generate_futures = []
                 eval_futures = []
                 
-                # Submit generation tasks up to num_samplers limit
-                for i, (operator_name, prompt_content) in enumerate(operator_tasks[:self.config.num_samplers]):
-                    future = executor.submit(self._generate_single_operator_solution, prompt_content, operator_name, i)
-                    generate_futures.append((operator_name, future))
+                # Calculate samples per operator to maintain balanced distribution
+                num_operators = len(operator_tasks)
+                
+                # Calculate target samples: multiple of num_operators, not exceeding num_samplers
+                max_multiplier = self.config.num_samplers // num_operators
+                target_samples = max_multiplier * num_operators  # Largest multiple of num_operators <= num_samplers
+                samples_per_operator = target_samples // num_operators  # This equals max_multiplier
+                
+                # Generate samples: each operator gets exactly samples_per_operator samples
+                sample_id = 0
+                for operator_name, prompt_content in operator_tasks:
+                    for _ in range(samples_per_operator):
+                        future = executor.submit(self._generate_single_operator_solution, prompt_content, operator_name, sample_id)
+                        generate_futures.append((operator_name, future))
+                        sample_id += 1
                 
                 # Process generations as they complete and immediately submit for evaluation
                 future_to_operator = {future: operator_name for operator_name, future in generate_futures}
@@ -315,22 +326,38 @@ class Eoh(Method):
 
 
     def _select_individuals(self, num_select: int) -> List[Solution]:
-        """Select individuals from population for operators"""
-        valid_population = [sol for sol in self.run_state_dict.population 
-                          if sol.evaluation_res and sol.evaluation_res.valid and sol.evaluation_res.score is not None]
+        """Select individuals from population using rank-based probability selection"""
+        import numpy as np
+        import math
         
-        if len(valid_population) == 0:
+        # Handle edge cases
+        if num_select <= 0:
+            return []
+            
+        # Filter valid solutions with finite scores (including NaN check)
+        funcs = [sol for sol in self.run_state_dict.population 
+                if sol.evaluation_res and sol.evaluation_res.valid and sol.evaluation_res.score is not None 
+                and not math.isinf(sol.evaluation_res.score) and not math.isnan(sol.evaluation_res.score)]
+        
+        if len(funcs) == 0:
             # Fallback to any available solutions
             return self.run_state_dict.population[:num_select] if self.run_state_dict.population else []
         
         # Sort by score (assuming higher is better)
-        valid_population.sort(key=lambda x: x.evaluation_res.score, reverse=True)
+        func = sorted(funcs, key=lambda f: f.evaluation_res.score, reverse=True)
         
-        # Tournament selection or simple top selection
-        if len(valid_population) >= num_select:
-            return valid_population[:num_select]
-        else:
-            return valid_population
+        # Create rank-based probability distribution
+        p = [1 / (r + len(func)) for r in range(len(func))]
+        p = np.array(p)
+        p = p / np.sum(p)
+        
+        # Select individuals based on probability
+        selected = []
+        for _ in range(min(num_select, len(func))):  # Ensure we don't select more than available
+            chosen = np.random.choice(func, p=p)
+            selected.append(chosen)
+        
+        return selected
 
     
     def _generate_single_operator_solution(self, prompt_content: List[dict], operator_type: str, sampler_id: int) -> tuple[Solution, dict]:
