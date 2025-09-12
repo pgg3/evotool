@@ -23,8 +23,8 @@ class CudaTaskInfoMaker(TaskInfoMaker):
             "func_py_code": func_py_code,
             "cuda_code": cuda_code
         }
-        LOCK_FILE = os.path.join(tempfile.gettempdir(), "evotool_cross_process.lock")
-        shutil.rmtree(LOCK_FILE, ignore_errors=True)
+        # LOCK_FILE = os.path.join(tempfile.gettempdir(), "evotool_cross_process.lock")
+        # shutil.rmtree(LOCK_FILE, ignore_errors=True)
         if fake_mode:
             info_dict = {
                 "name": "baseline",
