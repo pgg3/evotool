@@ -1,6 +1,6 @@
 # EvoTool
 
-A Python library for evolutionary optimization applications with GPU acceleration support.
+An LLM-driven code evolution method library.
 
 ## Installation
 
