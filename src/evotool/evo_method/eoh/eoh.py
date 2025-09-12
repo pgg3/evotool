@@ -1,10 +1,12 @@
 import concurrent.futures
-from typing import List
+from typing import List, Type
 
 from .run_config import EohConfig
 from .run_state_dict import EohRunStateDict
 from ..base_method import Method
 from evotool.task.base_task import Solution
+from ..base_run_state_dict import BaseRunStateDict
+
 
 class Eoh(Method):
     def __init__(self, config: EohConfig):
@@ -343,3 +345,6 @@ class Eoh(Method):
         except Exception as e:
             self.verbose_info(f"Sampler {sampler_id}: Failed to generate {operator_type} solution - {str(e)}")
             return Solution(""), {}
+
+    def _get_run_state_class(self) -> Type[BaseRunStateDict]:
+        return EohRunStateDict

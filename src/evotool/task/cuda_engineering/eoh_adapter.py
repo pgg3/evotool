@@ -187,11 +187,11 @@ Do not give additional explanations.
         except:
             algorithm = None
         
-        # Remove the algorithm part from response before code extraction
+        # Remove only the algorithm part from response before code extraction
         response_without_algorithm = response_str
         if algorithm:
-            # Remove all {algorithm} parts from the response
-            response_without_algorithm = re.sub(r'\{.*?\}', '', response_str, flags=re.DOTALL)
+            # Remove only the specific algorithm part from the response
+            response_without_algorithm = response_str.replace(algorithm, '', 1)
         
         # Try different code block patterns in order of preference
         patterns = [

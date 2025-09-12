@@ -12,14 +12,14 @@ class EohConfig(BaseConfig):
             evaluator: BaseEvaluator,
             adapter: EohAdapter,
             max_generations: int = 10,
-            max_sample_nums: int = 100,
+            max_sample_nums: int = 45,
             pop_size: int = 5,
             selection_num: int = 2,
             use_e2_operator: bool = True,
             use_m1_operator: bool = True,
             use_m2_operator: bool = True,
-            num_samplers: int = 1,
-            num_evaluators: int = 1,
+            num_samplers: int = 5,
+            num_evaluators: int = 5,
             verbose: bool = True
     ):
         super().__init__(task_info, output_path, verbose)
