@@ -21,5 +21,5 @@ class Es1p1Adapter(abc.ABC):
         raise NotImplementedError()
 
     @abstractmethod
-    def parse_response(self, response_str: str) -> str:
+    def parse_response(self, response_str: str) -> Solution:
         raise NotImplementedError()

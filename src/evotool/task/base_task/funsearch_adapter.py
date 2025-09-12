@@ -20,6 +20,6 @@ class FunSearchAdapter(ABC):
         pass
     
     @abstractmethod
-    def parse_response(self, response_str: str) -> str:
+    def parse_response(self, response_str: str) -> Solution:
         """Parse LLM response to extract solution string"""
         pass

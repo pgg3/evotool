@@ -198,10 +198,7 @@ class FunSearch(Method):
             
             response, usage = self.config.running_llm.get_response(prompt_content)
             
-            parsed_response = self.config.adapter.parse_response(response)
-            
-            new_sol = Solution(parsed_response)
-            
+            new_sol = self.config.adapter.parse_response(response)
             self.verbose_info(f"Sampler {sampler_id}: Generated a program variant.")
             return new_sol, usage
         except Exception as e:

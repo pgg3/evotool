@@ -113,15 +113,13 @@ class Es1p1(Method):
 
             response, usage = self.config.running_llm.get_response(prompt_content)
 
-            parsed_response = self.config.adapter.parse_response(response)
-
-            new_sol = Solution(parsed_response)
+            new_sol = self.config.adapter.parse_response(response)
 
             self.verbose_info(f"Sampler {sampler_id}: Generated a sample.")
             return new_sol, usage
         except Exception as e:
             self.verbose_info(f"Sampler {sampler_id}: Failed to generate a samples - {str(e)}")
-            return Solution(""), usage
+            return Solution(""), {}
 
     def _get_run_state_class(self) -> Type[BaseRunStateDict]:
         return Es1p1RunStateDict

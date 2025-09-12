@@ -40,7 +40,7 @@ Propose a new CUDA kernel code which aims to reduce the runtime of the operation
         prompt_content = [{'role': 'user', 'content': prompt}]
         return prompt_content
 
-    def parse_response(self, response_str: str) -> str:
+    def parse_response(self, response_str: str) -> Solution:
         # Try different code block patterns in order of preference
         patterns = [
             r'```cpp\s*\n(.*?)\n```',      # cpp
@@ -55,7 +55,7 @@ Propose a new CUDA kernel code which aims to reduce the runtime of the operation
             matches = re.findall(pattern, response_str, re.DOTALL | re.IGNORECASE)
             if matches:
                 # Return the longest match (likely the most complete implementation)
-                return max(matches, key=len).strip()
+                return Solution(max(matches, key=len).strip())
         # Last resort: return stripped response
-        return response_str.strip()
+        return Solution(response_str.strip())
 

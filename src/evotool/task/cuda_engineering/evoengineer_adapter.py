@@ -1,5 +1,5 @@
 import re
-from evotool.task.base_task import EohAdapter, Solution
+from evotool.task.base_task import EvoEngineerAdapter, Solution, Operator
 from typing import List
 
 def _make_task_description(operation_name: str, GPU_TYPE: str, CUDA_VER: str, cuda_code: str, description_of_code: str=None, run_time: float=None) -> str:
@@ -19,7 +19,7 @@ Here is a reference implementation of a working CUDA kernel proposal with runtim
 """
 
 
-class EvoEngineerCudaAdapter(EohAdapter):
+class EvoEngineerCudaAdapter(EvoEngineerAdapter):
     def __init__(self, task_info: dict):
         super().__init__(task_info)
     
@@ -53,11 +53,28 @@ class EvoEngineerCudaAdapter(EohAdapter):
         init_sol.evaluation_res = evaluation_res
         return init_sol
 
-    def get_prompt_i1(self) -> List[dict]:
-        """Generate initialization prompt (I1 operator)"""
+    def get_init_operators(self) -> List[Operator]:
+        """Get initialization operators for CUDA optimization"""
+        return [
+            Operator("random_init", 0),
+            Operator("baseline_variant", 0)
+        ]
+    
+    def get_offspring_operators(self) -> List[Operator]:
+        """Get offspring operators for CUDA optimization"""
+        return [
+            Operator("crossover", 2),
+            Operator("guided_crossover", 2),
+            Operator("mutation", 1),
+            Operator("parameter_mutation", 1)
+        ]
+
+    def get_operator_prompt(self, operator_name: str, selected_individuals: List[Solution], **kwargs) -> List[dict]:
+        """Generate prompt for any operator"""
         task_description = self._get_base_task_description()
         
-        prompt = f"""{task_description}
+        if operator_name == "random_init":
+            prompt = f"""{task_description}
 
 1. First, describe your new implementation and main steps in one sentence. The description must be inside within boxed {{}}.
 2. Next, give the optimized kernel implementation:
@@ -66,22 +83,32 @@ class EvoEngineerCudaAdapter(EohAdapter):
 ```
 Do not give additional explanations.
 """
-        return [{'role': 'user', 'content': prompt}]
+            return [{'role': 'user', 'content': prompt}]
+        
+        elif operator_name == "baseline_variant":
+            prompt = f"""{task_description}
 
-    def get_prompt_e1(self, selected_individuals: List[Solution]) -> List[dict]:
-        """Generate E1 (crossover) prompt"""
-        task_description = self._get_base_task_description()
-        
-        # Create prompt content for all individuals
-        indivs_prompt = ""
-        for i, indi in enumerate(selected_individuals):
-            if 'algorithm' in indi.other_info and indi.other_info['algorithm']:
-                algorithm_desc = indi.other_info['algorithm']
-            else:
-                algorithm_desc = f"Kernel implementation {i+1}"
-            indivs_prompt += f'No. {i + 1} kernel implementation and the corresponding code are:\n{algorithm_desc}\n{indi.sol_string}\n'
-        
-        prompt = f"""{task_description}
+Create a variant of the baseline implementation with different optimization strategies.
+1. First, describe your new implementation and main steps in one sentence. The description must be inside within boxed {{}}.
+2. Next, give the optimized kernel implementation:
+```cpp
+[Your kernel implementation]
+```
+Do not give additional explanations.
+"""
+            return [{'role': 'user', 'content': prompt}]
+            
+        elif operator_name == "crossover":
+            # Create prompt content for all individuals
+            indivs_prompt = ""
+            for i, indi in enumerate(selected_individuals):
+                if 'algorithm' in indi.other_info and indi.other_info['algorithm']:
+                    algorithm_desc = indi.other_info['algorithm']
+                else:
+                    algorithm_desc = f"Kernel implementation {i+1}"
+                indivs_prompt += f'No. {i + 1} kernel implementation and the corresponding code are:\\n{algorithm_desc}\\n{indi.sol_string}\\n'
+            
+            prompt = f"""{task_description}
 
 I have {len(selected_individuals)} existing kernel implementations with their codes as follows:
 {indivs_prompt}
@@ -94,22 +121,19 @@ Please help me create a new kernel implementation that has a totally different f
 ```
 Do not give additional explanations.
 """
-        return [{'role': 'user', 'content': prompt}]
-
-    def get_prompt_e2(self, selected_individuals: List[Solution]) -> List[dict]:
-        """Generate E2 (guided crossover) prompt"""
-        task_description = self._get_base_task_description()
-        
-        # Create prompt content for all individuals
-        indivs_prompt = ""
-        for i, indi in enumerate(selected_individuals):
-            if 'algorithm' in indi.other_info and indi.other_info['algorithm']:
-                algorithm_desc = indi.other_info['algorithm']
-            else:
-                algorithm_desc = f"Kernel implementation {i+1}"
-            indivs_prompt += f'No. {i + 1} kernel implementation and the corresponding code are:\n{algorithm_desc}\n{indi.sol_string}\n'
-        
-        prompt = f"""{task_description}
+            return [{'role': 'user', 'content': prompt}]
+            
+        elif operator_name == "guided_crossover":
+            # Create prompt content for all individuals
+            indivs_prompt = ""
+            for i, indi in enumerate(selected_individuals):
+                if 'algorithm' in indi.other_info and indi.other_info['algorithm']:
+                    algorithm_desc = indi.other_info['algorithm']
+                else:
+                    algorithm_desc = f"Kernel implementation {i+1}"
+                indivs_prompt += f'No. {i + 1} kernel implementation and the corresponding code are:\\n{algorithm_desc}\\n{indi.sol_string}\\n'
+            
+            prompt = f"""{task_description}
 
 I have {len(selected_individuals)} existing kernel implementations with their codes as follows:
 {indivs_prompt}
@@ -123,18 +147,16 @@ Please help me create a new kernel implementation that has a totally different f
 ```
 Do not give additional explanations.
 """
-        return [{'role': 'user', 'content': prompt}]
-
-    def get_prompt_m1(self, individual: Solution) -> List[dict]:
-        """Generate M1 (mutation) prompt"""
-        task_description = self._get_base_task_description()
-        
-        if 'algorithm' in individual.other_info and individual.other_info['algorithm']:
-            algorithm_desc = individual.other_info['algorithm']
-        else:
-            algorithm_desc = "Current kernel implementation"
-        
-        prompt = f"""{task_description}
+            return [{'role': 'user', 'content': prompt}]
+            
+        elif operator_name == "mutation":
+            individual = selected_individuals[0]
+            if 'algorithm' in individual.other_info and individual.other_info['algorithm']:
+                algorithm_desc = individual.other_info['algorithm']
+            else:
+                algorithm_desc = "Current kernel implementation"
+            
+            prompt = f"""{task_description}
 
 I have one kernel implementation with its code as follows. Kernel implementation description:
 {algorithm_desc}
@@ -149,18 +171,16 @@ Please assist me in creating a new kernel implementation that has a different fo
 ```
 Do not give additional explanations.
 """
-        return [{'role': 'user', 'content': prompt}]
-
-    def get_prompt_m2(self, individual: Solution) -> List[dict]:
-        """Generate M2 (parameter mutation) prompt"""
-        task_description = self._get_base_task_description()
-        
-        if 'algorithm' in individual.other_info and individual.other_info['algorithm']:
-            algorithm_desc = individual.other_info['algorithm']
-        else:
-            algorithm_desc = "Current kernel implementation"
-        
-        prompt = f"""{task_description}
+            return [{'role': 'user', 'content': prompt}]
+            
+        elif operator_name == "parameter_mutation":
+            individual = selected_individuals[0]
+            if 'algorithm' in individual.other_info and individual.other_info['algorithm']:
+                algorithm_desc = individual.other_info['algorithm']
+            else:
+                algorithm_desc = "Current kernel implementation"
+            
+            prompt = f"""{task_description}
 
 I have one kernel implementation with its code as follows. Kernel implementation description:
 {algorithm_desc}
@@ -175,9 +195,12 @@ Please identify the main kernel implementation parameters and assist me in creat
 ```
 Do not give additional explanations.
 """
-        return [{'role': 'user', 'content': prompt}]
+            return [{'role': 'user', 'content': prompt}]
+            
+        else:
+            raise ValueError(f"Unknown operator: {operator_name}")
 
-    def parse_response(self, response_str: str) -> tuple[str,str]:
+    def parse_response(self, response_str: str) -> Solution:
         """Parse LLM response to extract solution string and algorithm description"""
         # Extract algorithm/thought from response using pattern matching
         try:
@@ -195,11 +218,11 @@ Do not give additional explanations.
         
         # Try different code block patterns in order of preference
         patterns = [
-            r'```cpp\s*\n(.*?)\n```',      # cpp
-            r'```c\+\+\s*\n(.*?)\n```',    # c++
-            r'```cuda\s*\n(.*?)\n```',     # cuda
-            r'```c\s*\n(.*?)\n```',        # c
-            r'```\s*\n(.*?)\n```'          # generic code block
+            r'```cpp\s*\n(.*?)\n```',  # cpp
+            r'```c\+\+\s*\n(.*?)\n```',  # c++
+            r'```cuda\s*\n(.*?)\n```',  # cuda
+            r'```c\s*\n(.*?)\n```',  # c
+            r'```\s*\n(.*?)\n```'  # generic code block
         ]
         
         # Find all matches using case insensitive search
@@ -217,4 +240,7 @@ Do not give additional explanations.
         
         # Store algorithm description in the solution (this would need to be handled elsewhere)
         # For now, we just return the code
-        return code, algorithm
+        other_info = {
+            "algorithm": algorithm
+        }
+        return Solution(code, other_info=other_info)

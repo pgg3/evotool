@@ -177,7 +177,7 @@ Do not give additional explanations.
 """
         return [{'role': 'user', 'content': prompt}]
 
-    def parse_response(self, response_str: str) -> tuple[str,str]:
+    def parse_response(self, response_str: str) -> Solution:
         """Parse LLM response to extract solution string and algorithm description"""
         # Extract algorithm/thought from response using pattern matching
         try:
@@ -217,4 +217,7 @@ Do not give additional explanations.
         
         # Store algorithm description in the solution (this would need to be handled elsewhere)
         # For now, we just return the code
-        return code, algorithm
+        other_info={
+            "algorithm": algorithm
+        }
+        return Solution(code, other_info=other_info)

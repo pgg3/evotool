@@ -95,7 +95,7 @@ Propose an optimized CUDA kernel code which aims to reduce the runtime of the op
         prompt_content = [{'role': 'user', 'content': prompt}]
         return prompt_content
     
-    def parse_response(self, response_str: str) -> str:
+    def parse_response(self, response_str: str) -> Solution:
         """Parse LLM response to extract CUDA code"""
         # Try different code block patterns in order of preference
         patterns = [
@@ -111,7 +111,7 @@ Propose an optimized CUDA kernel code which aims to reduce the runtime of the op
             matches = re.findall(pattern, response_str, re.DOTALL | re.IGNORECASE)
             if matches:
                 # Return the longest match (likely the most complete implementation)
-                return max(matches, key=len).strip()
+                return Solution(max(matches, key=len).strip())
         
         # Last resort: return stripped response
-        return response_str.strip()
+        return Solution(response_str.strip())

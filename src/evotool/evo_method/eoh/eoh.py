@@ -153,9 +153,7 @@ class Eoh(Method):
         try:
             prompt_content = self.config.adapter.get_prompt_i1()
             response, usage = self.config.running_llm.get_response(prompt_content)
-            parsed_response, algorithm = self.config.adapter.parse_response(response)
-            other_info = {"algorithm": algorithm}
-            new_sol = Solution(parsed_response, other_info=other_info)
+            new_sol = self.config.adapter.parse_response(response)
             self.verbose_info(f"Sampler {sampler_id}: Generated initial solution")
             return new_sol, usage
         except Exception as e:
@@ -243,7 +241,9 @@ class Eoh(Method):
                     generate_futures.append((operator_name, future))
                 
                 # Process generations as they complete and immediately submit for evaluation
-                for operator_name, future in generate_futures:
+                future_to_operator = {future: operator_name for operator_name, future in generate_futures}
+                for future in concurrent.futures.as_completed([f for _, f in generate_futures]):
+                    operator_name = future_to_operator[future]
                     try:
                         solution, usage = future.result()
                         
@@ -337,9 +337,7 @@ class Eoh(Method):
         """Generate a single solution for an operator"""
         try:
             response, usage = self.config.running_llm.get_response(prompt_content)
-            parsed_response, algorithm = self.config.adapter.parse_response(response)
-            other_info = {"algorithm": algorithm}
-            new_sol = Solution(parsed_response, other_info=other_info)
+            new_sol = self.config.adapter.parse_response(response)
             self.verbose_info(f"Sampler {sampler_id}: Generated {operator_type} solution")
             return new_sol, usage
         except Exception as e:
