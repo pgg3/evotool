@@ -203,7 +203,7 @@ class FunSearch(Method):
             return new_sol, usage
         except Exception as e:
             self.verbose_info(f"Sampler {sampler_id}: Failed to generate program - {str(e)}")
-            return Solution(""), usage  # Return usage even if failed
+            return Solution(""), {}  # Return usage even if failed
     
     def _get_run_state_class(self) -> Type[BaseRunStateDict]:
         return FunSearchRunStateDict

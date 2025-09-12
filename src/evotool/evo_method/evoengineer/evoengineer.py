@@ -242,7 +242,7 @@ class EvoEngineer(Method):
     def _generate_single_solution(self, operator, selected_individuals: List[Solution], sampler_id: int) -> tuple[Solution, dict]:
         """Generate a single solution using an operator"""
         try:
-            current_best_sol = self._get_best_sol(self.run_state_dict.sol_history)
+            current_best_sol = self._get_best_sol(self.run_state_dict.population)
             random_3_thought = self._get_n_random_thought(3)
             prompt_content = self.config.adapter.get_operator_prompt(operator.name, selected_individuals, current_best_sol, random_3_thought)
             response, usage = self.config.running_llm.get_response(prompt_content)
