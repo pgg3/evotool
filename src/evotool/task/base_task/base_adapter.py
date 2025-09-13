@@ -1,6 +1,6 @@
 import abc
 from abc import abstractmethod
-from evotool.task import Solution
+from .base_evaluator import Solution
 
 
 class BaseAdapter(abc.ABC):

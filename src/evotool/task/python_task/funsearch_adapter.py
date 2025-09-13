@@ -1,3 +1,4 @@
+import re
 from abc import ABC, abstractmethod
 from typing import List
 from evotool.task.base_task import FunSearchAdapter, Solution, EvaluationResult

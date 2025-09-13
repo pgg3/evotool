@@ -1,5 +1,5 @@
 from abc import ABC
-from evotool.task import Solution
+from evotool.task.base_task.base_evaluator import Solution
 
 
 class FuncApproxBaseAdapter:

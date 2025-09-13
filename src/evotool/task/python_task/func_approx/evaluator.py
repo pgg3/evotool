@@ -2,7 +2,8 @@ import sys
 import io
 import traceback
 import numpy as np
-from evotool.task.python_task import PythonEvaluator, EvaluationResult
+from evotool.task.python_task import PythonEvaluator
+from evotool.task.base_task import EvaluationResult
 
 
 class FuncApproxEvaluator(PythonEvaluator):
@@ -36,6 +37,7 @@ class FuncApproxEvaluator(PythonEvaluator):
                     'sum': sum, 'min': min, 'max': max, 'abs': abs,
                     'print': print, 'str': str, 'int': int, 'float': float,
                     'list': list, 'dict': dict, 'tuple': tuple, 'set': set,
+                    '__import__': __import__,
                 },
                 'np': np,
                 'math': math,
@@ -51,7 +53,7 @@ class FuncApproxEvaluator(PythonEvaluator):
                 return EvaluationResult(
                     valid=False, 
                     score=0.0,
-                    additional_info_dict={'error': 'Function "approximate" not found in code'}
+                    additional_info={'error': 'Function "approximate" not found in code'}
                 )
             
             # Get the approximation function and data
@@ -72,7 +74,7 @@ class FuncApproxEvaluator(PythonEvaluator):
                 return EvaluationResult(
                     valid=False,
                     score=0.0, 
-                    additional_info_dict={'error': f'Shape mismatch: expected {y_data.shape}, got {y_pred.shape}'}
+                    additional_info={'error': f'Shape mismatch: expected {y_data.shape}, got {y_pred.shape}'}
                 )
             
             # Calculate metrics
@@ -109,13 +111,13 @@ class FuncApproxEvaluator(PythonEvaluator):
                     'true_r2': float(true_r2)
                 })
             
-            return EvaluationResult(valid=True, score=score, additional_info_dict=additional_info)
+            return EvaluationResult(valid=True, score=score, additional_info=additional_info)
             
         except Exception as e:
             return EvaluationResult(
                 valid=False,
                 score=0.0,
-                additional_info_dict={
+                additional_info={
                     'error': f'Evaluation error: {str(e)}',
                     'traceback': traceback.format_exc()
                 }
