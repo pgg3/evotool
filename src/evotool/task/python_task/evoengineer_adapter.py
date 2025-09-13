@@ -1,23 +1,28 @@
 import re
-from evotool.task.base_task import EvoEngineerAdapter, Solution, Operator
+from abc import ABC
 from typing import List
-from evotool.task.cuda_engineering.cuda_adapter import CudaAdapter
+from evotool.task.base_task import EvoEngineerAdapter, Solution, Operator
 
 
 
-
-class EvoEngineerCudaAdapter(CudaAdapter, EvoEngineerAdapter):
+class EvoEngineerPythonAdapter(EvoEngineerAdapter):
+    """EvoEngineer Adapter for Python code optimization tasks.
+    
+    This class provides EvoEngineer algorithm logic for Python tasks.
+    Subclasses should implement _get_base_task_description() to define task-specific instructions.
+    """
+    
     def __init__(self, task_info: dict):
-        EvoEngineerAdapter.__init__(self, task_info)
+        super().__init__(task_info)
 
     def get_init_operators(self) -> List[Operator]:
-        """Get initialization operators for CUDA optimization"""
+        """Get initialization operators for Python optimization"""
         return [
             Operator("init", 0)
         ]
     
     def get_offspring_operators(self) -> List[Operator]:
-        """Get offspring operators for CUDA optimization"""
+        """Get offspring operators for Python optimization"""
         return [
             Operator("crossover", 2),
             Operator("mutation", 1)
@@ -45,36 +50,32 @@ Reference insights (consider if relevant):
             prompt = f"""
 {task_description}
 
-Here is the CUDA kernel code you need to optimize:
+Here is the Python function you need to optimize:
 
-<current_kernel>
+<current_function>
 <name>{current_best_sol.other_info['name']}</name>
 <thought>{current_best_sol.other_info['thought']}</thought>
 <code>
-```c++
+```python
 {current_best_sol.sol_string}
 ```
 </code>
-<runtime>{-current_best_sol.evaluation_res.score:.5f} milliseconds</runtime>
-<profile_info>
-{current_best_sol.evaluation_res.additional_info['prof_string']}
-</profile_info>
-</current_kernel>{thoughts_section}
+<score>{current_best_sol.evaluation_res.score:.5f}</score>
+</current_function>{thoughts_section}
 
-Think deeply about how to optimize this CUDA kernel. {'Reference insights are provided above - use them as inspiration if they seem relevant to your optimization approach.' if random_thoughts and len(random_thoughts) > 0 else ''} Propose a new CUDA kernel that:
+Think deeply about how to optimize this Python function. {'Reference insights are provided above - use them as inspiration if they seem relevant to your optimization approach.' if random_thoughts and len(random_thoughts) > 0 else ''} Propose a new Python implementation that:
 1. Analyzes the current implementation to identify optimization opportunities
-2. Applies proven CUDA optimization techniques based on your analysis
+2. Applies proven algorithmic optimization techniques based on your analysis
 3. Explains your optimization rationale and approach clearly
 
-The new kernel should aim to reduce the runtime of the operation while ensuring it returns the correct result.
-The PYBIND11_MODULE has to be the same as in the example.
-MAKE SURE THE PROPOSAL CODE IS VALID CUDA CODE.
+The new function should aim to improve performance while ensuring it returns the correct result.
+MAKE SURE THE PROPOSAL CODE IS VALID PYTHON CODE.
 FOLLOW EXACTLY THIS FORMAT. DO NOT ADD ANYTHING ELSE.
 
 Answer using the following schema:
 
 name: A shortened descriptor of the idea. Lowercase, no spaces, underscores allowed.
-code: The proposed cuda script in code.
+code: The proposed python script in code.
 thought: The rationale for the improvement idea.
 
 """
@@ -95,62 +96,59 @@ Reference insights (consider if relevant):
             # Build XML-structured individuals
             indivs_xml = ""
             for i, indi in enumerate(selected_individuals):
-                name = indi.other_info.get('name', f"kernel_{i+1}")
-                runtime = -indi.evaluation_res.score
+                name = indi.other_info.get('name', f"function_{i+1}")
+                score = indi.evaluation_res.score if indi.evaluation_res else 0
                 thought = indi.other_info.get('thought', 'No thought provided')
                 
                 indivs_xml += f"""
-<kernel_{i+1}>
+<function_{i+1}>
 <name>{name}</name>
 <thought>{thought}</thought>
 <code>
-```c++
+```python
 {indi.sol_string}
 ```
 </code>
-<runtime>{runtime:.5f} milliseconds</runtime>
-</kernel_{i+1}>"""
+<score>{score:.5f}</score>
+</function_{i+1}>"""
             
             prompt = f"""
 {task_description}
 
-Here is the current best CUDA kernel to optimize:
+Here is the current best Python function to optimize:
 
-<current_kernel>
+<current_function>
 <name>{current_best_sol.other_info.get('name', 'current_best')}</name>
 <thought>{current_best_sol.other_info.get('thought', 'Current best implementation')}</thought>
 <code>
-```c++
+```python
 {current_best_sol.sol_string}
 ```
 </code>
-<runtime>{-current_best_sol.evaluation_res.score:.5f} milliseconds</runtime>
-<profile_info>
-{current_best_sol.evaluation_res.additional_info['prof_string']}
-</profile_info>
-</current_kernel>
+<score>{current_best_sol.evaluation_res.score:.5f}</score>
+</current_function>
 
-I have {len(selected_individuals)} other kernel implementations to learn from:
+I have {len(selected_individuals)} other function implementations to learn from:
 {indivs_xml}{thoughts_section}
 
-Analyze the current best kernel and these alternative implementations, then think deeply about how to combine their best ideas. {'Reference insights are provided above - use them as inspiration if they seem relevant to your crossover approach.' if random_thoughts and len(random_thoughts) > 0 else ''} Propose a new CUDA kernel that:
+Analyze the current best function and these alternative implementations, then think deeply about how to combine their best ideas. {'Reference insights are provided above - use them as inspiration if they seem relevant to your crossover approach.' if random_thoughts and len(random_thoughts) > 0 else ''} Propose a new Python function that:
 1. Analyzes the different optimization approaches from the existing implementations
-2. Combines the most effective ideas and techniques from multiple kernels
+2. Combines the most effective ideas and techniques from multiple functions
 3. Explains your crossover rationale and which implementation ideas you merged
 
-The new kernel should aim to reduce the runtime by combining ideas from the existing implementations while ensuring it returns the correct result.
-The PYBIND11_MODULE has to be the same as in the example.
-MAKE SURE THE PROPOSAL CODE IS VALID CUDA CODE.
+The new function should aim to improve performance by combining ideas from the existing implementations while ensuring it returns the correct result.
+MAKE SURE THE PROPOSAL CODE IS VALID PYTHON CODE.
 FOLLOW EXACTLY THIS FORMAT. DO NOT ADD ANYTHING ELSE.
 
 Answer using the following schema:
 
 name: A shortened descriptor of the idea. Lowercase, no spaces, underscores allowed.
-code: The proposed cuda script in code.
+code: The proposed python script in code.
 thought: The rationale for the improvement idea.
 
 """
             return [{'role': 'user', 'content': prompt}]
+            
         elif operator_name == "mutation":
             individual = selected_individuals[0]
             
@@ -166,55 +164,51 @@ Reference insights (consider if relevant):
 """
             
             name = individual.other_info.get('name', 'mutation_base')
-            runtime = -individual.evaluation_res.score
+            score = individual.evaluation_res.score if individual.evaluation_res else 0
             thought = individual.other_info.get('thought', 'No thought provided')
             
             prompt = f"""
 {task_description}
 
-Here is the current best CUDA kernel for reference:
+Here is the current best Python function for reference:
 
 <current_best>
 <name>{current_best_sol.other_info.get('name', 'current_best')}</name>
 <thought>{current_best_sol.other_info.get('thought', 'Current best implementation')}</thought>
 <code>
-```c++
+```python
 {current_best_sol.sol_string}
 ```
 </code>
-<runtime>{-current_best_sol.evaluation_res.score:.5f} milliseconds</runtime>
-<profile_info>
-{current_best_sol.evaluation_res.additional_info['prof_string']}
-</profile_info>
+<score>{current_best_sol.evaluation_res.score:.5f}</score>
 </current_best>
 
-Here is the kernel implementation to mutate:
+Here is the function implementation to mutate:
 
-<source_kernel>
+<source_function>
 <name>{name}</name>
 <thought>{thought}</thought>
 <code>
-```c++
+```python
 {individual.sol_string}
 ```
 </code>
-<runtime>{runtime:.5f} milliseconds</runtime>
-</source_kernel>{thoughts_section}
+<score>{score:.5f}</score>
+</source_function>{thoughts_section}
 
-Think creatively about how to fundamentally reimagine this kernel, using the current best as your correctness reference. {'Reference insights are provided above - use them as inspiration if they seem relevant to your mutation approach.' if random_thoughts and len(random_thoughts) > 0 else ''} Propose a deeply mutated CUDA kernel that:
-1. Explores radical changes in algorithmic approach, memory access patterns, or parallelization strategy
+Think creatively about how to fundamentally reimagine this function, using the current best as your correctness reference. {'Reference insights are provided above - use them as inspiration if they seem relevant to your mutation approach.' if random_thoughts and len(random_thoughts) > 0 else ''} Propose a deeply mutated Python function that:
+1. Explores radical changes in algorithmic approach, data structures, or computational strategy
 2. May completely restructure the computation while maintaining functional correctness against the current best
 3. Explains your bold mutation concept and the reasoning behind this fundamental transformation
 
-The mutated kernel should have a different form but maintain the same functionality while aiming for better runtime performance than the current best.
-The PYBIND11_MODULE has to be the same as in the example.
-MAKE SURE THE PROPOSAL CODE IS VALID CUDA CODE.
+The mutated function should have a different form but maintain the same functionality while aiming for better performance than the current best.
+MAKE SURE THE PROPOSAL CODE IS VALID PYTHON CODE.
 FOLLOW EXACTLY THIS FORMAT. DO NOT ADD ANYTHING ELSE.
 
 Answer using the following schema:
 
 name: A shortened descriptor of the idea. Lowercase, no spaces, underscores allowed.
-code: The proposed cuda script in code.
+code: The proposed python script in code.
 thought: The rationale for the improvement idea.
 
 """
@@ -248,7 +242,7 @@ thought: The rationale for the improvement idea.
 
                 cleaned_code = code_block_pattern.search(json_dict["code"]).group(1)
                 json_dict["code"] = cleaned_code
-                del json_dict["code"]  # Fix: use del instead of remove
+                del json_dict["code"]
 
                 # Return Solution with the cleaned code
                 return Solution(cleaned_code)
@@ -293,4 +287,3 @@ thought: The rationale for the improvement idea.
             "thought": thought
         }
         return Solution(cleaned_code if cleaned_code else proposed_content.strip(), other_info=other_info)
-

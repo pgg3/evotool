@@ -1,9 +1,9 @@
 from abc import ABC, abstractmethod
 from typing import List
-from evotool.task.base_task import FunSearchAdapter, Solution
+from evotool.task.base_task import FunSearchAdapter, Solution, EvaluationResult
 
 
-class FunSearchPythonAdapter(FunSearchAdapter, ABC):
+class FunSearchPythonAdapter(FunSearchAdapter):
     """FunSearch Adapter for Python code optimization tasks.
     
     This class provides common FunSearch logic for Python tasks.
@@ -13,62 +13,97 @@ class FunSearchPythonAdapter(FunSearchAdapter, ABC):
     def __init__(self, task_info: dict):
         super().__init__(task_info)
     
-    def get_prompt(self, best_sols: List[Solution]) -> List[dict]:
-        """Generate prompt for Python code optimization using multiple solutions."""
-        content = self._get_system_prompt() + "\n\n"
-        content += "Task: Analyze multiple implementations and create an improved hybrid approach.\n\n"
-        
-        for i, sol in enumerate(best_sols, 1):
-            score = sol.evaluation_res.score if sol.evaluation_res else 0
-            method = sol.other_info.get('method', 'unknown') if sol.other_info else 'unknown'
-            additional_info = sol.evaluation_res.additional_info if sol.evaluation_res else {}
-            
-            content += f"Implementation {i} ({method}, Score = {score:.4f}):\n"
-            if additional_info:
-                content += f"  Metrics: {additional_info}\n"
-            content += f"```python\n{sol.sol_string}\n```\n\n"
-        
-        content += """Analysis Strategy: Create a novel approach that combines the best aspects of these solutions.
+    def get_prompt(self, solutions: List[Solution]) -> List[dict]:
+        """Generate prompt based on multiple solutions (similar to CUDA implementation)"""
+        task_description = self._get_base_task_description()
+        if len(solutions) == 1:
+            prompt = f"""{task_description}
 
-Consider:
-- Learning from the strengths of each implementation
-- Combining different algorithmic foundations
-- Creating hybrid approaches that merge successful techniques
-- Introducing innovations that go beyond the existing solutions
+You are a Machine Learning Engineer trying to optimize Python code for better performance. Make sure the code returns the correct result and maintains the same functionality. Focus on algorithmic improvements, data structure optimizations, and efficient Python patterns.
 
-Return an improved implementation that synthesizes insights from all approaches."""
+Answer using the following schema:
 
-        return [{"role": "user", "content": content}]
-    
-    def parse_response(self, response_str: str) -> str:
-        """Parse LLM response to extract Python code."""
-        lines = response_str.strip().split('\n')
-        
-        in_code_block = False
-        code_lines = []
-        
-        for line in lines:
-            if line.strip().startswith('```python') or line.strip().startswith('```'):
-                in_code_block = True
-                continue
-            elif line.strip() == '```' and in_code_block:
-                break
-            elif in_code_block:
-                code_lines.append(line)
-        
-        if code_lines:
-            return '\n'.join(code_lines)
+```python
+[Your Python implementation]
+```
+
+MAKE SURE THE PROPOSAL CODE IS VALID PYTHON CODE.
+FOLLOW EXACTLY THIS FORMAT. DO NOT ADD ANYTHING ELSE.
+
+Here is the Python code example you need to optimize:
+```python
+{solutions[0].sol_string}
+```
+
+Propose a new Python code which aims to improve the performance of the operation, while ensuring the code returns the correct result.
+"""
+        elif len(solutions) >= 2:
+            prompt = f"""{task_description}
+
+You are a Machine Learning Engineer trying to optimize Python code for better performance. Make sure the code returns the correct result and maintains the same functionality. Focus on algorithmic improvements, data structure optimizations, and efficient Python patterns.
+
+Answer using the following schema:
+
+```python
+[Your Python implementation]
+```
+
+MAKE SURE THE PROPOSAL CODE IS VALID PYTHON CODE.
+FOLLOW EXACTLY THIS FORMAT. DO NOT ADD ANYTHING ELSE.
+
+Here is a Python code example:
+```python
+{solutions[0].sol_string}
+```
+
+A better version of the Python code example is as follows:
+```python
+{solutions[1].sol_string}
+```
+
+Propose a new Python code which aims to improve the performance of the operation, while ensuring the code returns the correct result.
+"""
         else:
-            return response_str.strip()
-    
-    @abstractmethod
-    def _get_system_prompt(self) -> str:
-        """Get system prompt for the specific Python task.
+            # Fallback if no solutions provided
+            prompt = f"""{task_description}
+
+You are a Machine Learning Engineer trying to optimize Python code for better performance. Make sure the code returns the correct result and maintains the same functionality. Focus on algorithmic improvements, data structure optimizations, and efficient Python patterns.
+
+Answer using the following schema:
+
+```python
+[Your Python implementation]
+```
+
+MAKE SURE THE PROPOSAL CODE IS VALID PYTHON CODE.
+FOLLOW EXACTLY THIS FORMAT. DO NOT ADD ANYTHING ELSE.
+
+Here is the original Python code:
+```python
+{self.task_info["python_code"]}
+```
+
+Propose an optimized Python code which aims to improve the performance of the operation, while ensuring the code returns the correct result.
+"""
         
-        This should include:
-        - Task-specific requirements and constraints
-        - Function interfaces and expected behavior
-        - Domain-specific guidelines
-        - Synthesis and combination strategies
-        """
-        pass
+        prompt_content = [{'role': 'user', 'content': prompt}]
+        return prompt_content
+    
+    def parse_response(self, response_str: str) -> Solution:
+        """Parse LLM response to extract CUDA code"""
+        # Try different code block patterns in order of preference
+        patterns = [
+            r'```python\s*\n(.*?)\n```',
+            r'```Python\s*\n(.*?)\n```',
+            r'```\s*\n(.*?)\n```'          # generic code block
+        ]
+
+        # Find all matches using case insensitive search
+        for pattern in patterns:
+            matches = re.findall(pattern, response_str, re.DOTALL | re.IGNORECASE)
+            if matches:
+                # Return the longest match (likely the most complete implementation)
+                return Solution(max(matches, key=len).strip())
+
+        # Last resort: return stripped response
+        return Solution(response_str.strip())

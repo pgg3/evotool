@@ -1,9 +1,10 @@
+import re
 from abc import ABC, abstractmethod
 from typing import List
 from evotool.task.base_task import EohAdapter, Solution
 
 
-class EohPythonAdapter(EohAdapter, ABC):
+class EohPythonAdapter(EohAdapter):
     """EOH Adapter for Python code optimization tasks.
     
     This class provides common operator logic for Python tasks.
@@ -15,192 +16,165 @@ class EohPythonAdapter(EohAdapter, ABC):
     
     def get_prompt_i1(self) -> List[dict]:
         """Generate initialization prompt (I1 operator)."""
-        content = self._get_system_prompt() + "\n\n"
-        content += """Task: Initialize diverse algorithms.
+        task_description = self._get_base_task_description()
 
-Create an innovative implementation using different mathematical approaches and algorithmic foundations.
+        prompt = f"""{task_description}
 
-FOLLOW EXACTLY THIS FORMAT. DO NOT ADD ANYTHING ELSE.
-{algorithmic description and reasoning}
+1. First, describe your new algorithm and main steps in one sentence. The description must be inside within boxed {{}}. 
+2. Next, implement the following Python function:
 ```python
-implementation code
-```"""
-        
-        return [{"role": "user", "content": content}]
-    
+[Your implementation code]
+```
+
+Do not give additional explanations.
+"""
+        return [{'role': 'user', 'content': prompt}]
+
     def get_prompt_e1(self, selected_individuals: List[Solution]) -> List[dict]:
-        """Generate E1 (crossover) prompt."""
-        content = self._get_system_prompt() + "\n\n"
-        content += "Task: Cross-breed algorithms to create hybrid approaches.\n\nParent Solutions:\n"
-        
-        for i, sol in enumerate(selected_individuals, 1):
-            score = sol.evaluation_res.score if sol.evaluation_res else 0
-            method = sol.other_info.get('method', 'unknown') if sol.other_info else 'unknown'
-            
-            content += f"\nParent {i} ({method}, Score = {score:.4f}):\n"
-            content += f"```python\n{sol.sol_string}\n```\n"
-        
-        content += """
-Crossover Strategy: Combine the best features of these algorithms to create a novel hybrid.
-Consider mixing different mathematical foundations, combining preprocessing steps, and merging optimization approaches.
+        task_description = self._get_base_task_description()
 
-Create a hybrid algorithm that inherits strengths from both parents.
+        # Create prompt content for all individuals
+        indivs_prompt = ""
+        for i, indi in enumerate(selected_individuals):
+            if 'algorithm' in indi.other_info and indi.other_info['algorithm']:
+                algorithm_desc = indi.other_info['algorithm']
+            else:
+                algorithm_desc = f"Python Code {i+1}"
+            indivs_prompt += f'No. {i + 1} algorithm and the corresponding code are:\n{algorithm_desc}\n{indi.sol_string}\n'
 
-FOLLOW EXACTLY THIS FORMAT. DO NOT ADD ANYTHING ELSE.
-{algorithmic description and reasoning}
+        prompt = f"""{task_description}
+
+I have {len(selected_individuals)} existing algorithms with their codes as follows:
+{indivs_prompt}
+
+Please help me create a new algorithm that has a totally different form from the given ones.
+1. First, describe your new algorithm and main steps in one sentence. The description must be inside within boxed {{}}.
+2. Next, implement the kernel:
 ```python
-implementation code
-```"""
-        
-        return [{"role": "user", "content": content}]
+[Your implementation code]
+```
+Do not give additional explanations.
+"""
+        return [{'role': 'user', 'content': prompt}]
     
     def get_prompt_e2(self, selected_individuals: List[Solution]) -> List[dict]:
         """Generate E2 (guided crossover) prompt."""
-        content = self._get_system_prompt() + "\n\n"
-        content += "Task: Guided crossover with performance analysis.\n\nCandidate Solutions:\n"
-        
-        for i, sol in enumerate(selected_individuals, 1):
-            score = sol.evaluation_res.score if sol.evaluation_res else 0
-            method = sol.other_info.get('method', 'unknown') if sol.other_info else 'unknown'
-            additional_info = sol.evaluation_res.additional_info if sol.evaluation_res else {}
-            
-            content += f"\nCandidate {i} ({method}, Score = {score:.4f}):\n"
-            if additional_info:
-                content += f"  Metrics: {additional_info}\n"
-            content += f"```python\n{sol.sol_string}\n```\n"
-        
-        content += """
-Guided Crossover: Analyze the performance patterns and create a targeted hybrid.
+        task_description = self._get_base_task_description()
 
-Analysis Focus:
-- Which components contribute most to high scores?
-- What causes performance issues?
-- How do different approaches handle edge cases?
-- Which algorithmic principles show most promise?
+        # Create prompt content for all individuals
+        indivs_prompt = ""
+        for i, indi in enumerate(selected_individuals):
+            if 'algorithm' in indi.other_info and indi.other_info['algorithm']:
+                algorithm_desc = indi.other_info['algorithm']
+            else:
+                algorithm_desc = f"Python code {i + 1}"
+            indivs_prompt += f'No. {i + 1} algorithm and the corresponding code are:\n{algorithm_desc}\n{indi.sol_string}\n'
 
-Create a principled combination that addresses identified weaknesses while preserving strengths.
+        prompt = f"""{task_description}
 
-FOLLOW EXACTLY THIS FORMAT. DO NOT ADD ANYTHING ELSE.
-{algorithmic description and reasoning}
+I have {len(selected_individuals)} existing algorithms with their codes as follows:
+{indivs_prompt}
+
+Please help me create a new algorithm that has a totally different form from the given ones but can be motivated from them.
+1. Firstly, identify the common backbone idea in the provided algorithms.
+2. Secondly, based on the backbone idea describe your new algorithm in one sentence. The description must be inside within boxed {{}}.
+3. Thirdly, implement the kernel:
 ```python
-implementation code
-```"""
-        
-        return [{"role": "user", "content": content}]
+[Your implementation code]
+```
+Do not give additional explanations.
+"""
+        return [{'role': 'user', 'content': prompt}]
     
     def get_prompt_m1(self, individual: Solution) -> List[dict]:
-        """Generate M1 (mutation) prompt."""
-        content = self._get_system_prompt() + "\n\n"
-        score = individual.evaluation_res.score if individual.evaluation_res else 0
-        method = individual.other_info.get('method', 'unknown') if individual.other_info else 'unknown'
-        
-        content += f"""Task: Mutate algorithm for improvement.
+        task_description = self._get_base_task_description()
 
-Current Solution ({method}, Score = {score:.4f}):
-```python
+        if 'algorithm' in individual.other_info and individual.other_info['algorithm']:
+            algorithm_desc = individual.other_info['algorithm']
+        else:
+            algorithm_desc = "Current algorithm"
+
+        prompt = f"""{task_description}
+
+I have one algorithm with its code as follows. algorithm description:
+{algorithm_desc}
+Code:
 {individual.sol_string}
-```
 
-Mutation Strategy: Make focused improvements to the algorithm.
-Consider:
-- Algorithmic refinements and optimizations
-- Mathematical enhancements
-- Implementation improvements
-- Novel variations of the core approach
-
-Create a meaningful variation that could improve performance.
-
-FOLLOW EXACTLY THIS FORMAT. DO NOT ADD ANYTHING ELSE.
-{{algorithmic description and reasoning}}
+Please assist me in creating a new algorithm that has a different form but can be a modified version of the algorithm provided.
+1. First, describe your new algorithm and main steps in one sentence. The description must be inside within boxed {{}}.
+2. Next, implement the kernel:
 ```python
-implementation code
-```"""
-        
-        return [{"role": "user", "content": content}]
+[Your implementation code]
+```
+Do not give additional explanations.
+"""
+        return [{'role': 'user', 'content': prompt}]
     
     def get_prompt_m2(self, individual: Solution) -> List[dict]:
-        """Generate M2 (parameter mutation) prompt."""
-        content = self._get_system_prompt() + "\n\n"
-        score = individual.evaluation_res.score if individual.evaluation_res else 0
-        method = individual.other_info.get('method', 'unknown') if individual.other_info else 'unknown'
-        
-        content += f"""Task: Parameter-focused mutation.
+        task_description = self._get_base_task_description()
 
-Current Solution ({method}, Score = {score:.4f}):
-```python
+        if 'algorithm' in individual.other_info and individual.other_info['algorithm']:
+            algorithm_desc = individual.other_info['algorithm']
+        else:
+            algorithm_desc = "Current algorithm"
+
+        prompt = f"""{task_description}
+
+I have one algorithm with its code as follows. algorithm description:
+{algorithm_desc}
+Code:
 {individual.sol_string}
-```
 
-Parameter Mutation: Modify algorithmic parameters and hyperparameters.
-Focus on:
-- Numerical constants and thresholds
-- Regularization parameters  
-- Tolerance values and convergence criteria
-- Complexity parameters
-- Weighting schemes
-
-Adjust parameters to potentially improve performance or numerical stability.
-
-FOLLOW EXACTLY THIS FORMAT. DO NOT ADD ANYTHING ELSE.
-{{algorithmic description and reasoning}}
+Please identify the main algorithm parameters and assist me in creating a new algorithm that has a different parameter settings of the algorithm provided.
+1. First, describe your new algorithm and main steps in one sentence. The description must be inside within boxed {{}}.
+2. Next, implement the kernel:
 ```python
-implementation code
-```"""
-        
-        return [{"role": "user", "content": content}]
+[Your implementation code]
+```
+Do not give additional explanations.
+"""
+        return [{'role': 'user', 'content': prompt}]
     
-    def parse_response(self, response_str: str) -> tuple[str, str]:
-        """Parse LLM response to extract Python code and algorithm description."""
-        import re
-        
-        # Extract algorithm/thought from response using pattern matching (same as CUDA EOH)
+    def parse_response(self, response_str: str) -> Solution:
+        """Parse LLM response to extract solution string and algorithm description"""
+        # Extract algorithm/thought from response using pattern matching
         try:
             pattern = r'\{.*?\}'
             bracketed_texts = re.findall(pattern, response_str, re.DOTALL)
             algorithm = bracketed_texts[0] if bracketed_texts else None
-            if algorithm:
-                # Remove the outer braces
-                algorithm = algorithm[1:-1].strip()
         except:
             algorithm = None
-        
-        # Remove the algorithm part from response before code extraction
+
+        # Remove only the algorithm part from response before code extraction
         response_without_algorithm = response_str
         if algorithm:
-            # Remove all {algorithm} parts from the response
-            response_without_algorithm = re.sub(r'\{.*?\}', '', response_str, flags=re.DOTALL)
-        
+            # Remove only the specific algorithm part from the response
+            response_without_algorithm = response_str.replace(algorithm, '', 1)
+
         # Extract Python code block
-        code_patterns = [
+        patterns = [
             r'```python\s*\n(.*?)\n```',
+            r'```Python\s*\n(.*?)\n```',
             r'```\s*\n(.*?)\n```'
         ]
-        
-        code = None
-        for pattern in code_patterns:
-            matches = re.findall(pattern, response_without_algorithm, re.DOTALL)
+
+        # Find all matches using case insensitive search
+        code = ""
+        for pattern in patterns:
+            matches = re.findall(pattern, response_without_algorithm, re.DOTALL | re.IGNORECASE)
             if matches:
-                code = matches[0].strip()
+                # Return the longest match (likely the most complete implementation)
+                code = max(matches, key=len).strip()
                 break
-        
-        # Fallback if no code block found
+
         if not code:
+            # Last resort: return stripped response without algorithm
             code = response_without_algorithm.strip()
-        
-        # Fallback if no algorithm found
-        if not algorithm:
-            algorithm = "Algorithm description not provided"
-        
-        return code, algorithm
-    
-    @abstractmethod
-    def _get_system_prompt(self) -> str:
-        """Get system prompt for the specific Python task.
-        
-        This should include:
-        - Task-specific requirements and constraints
-        - Function interfaces and expected behavior
-        - Domain-specific guidelines
-        - Output format requirements
-        """
-        pass
+
+        # Store algorithm description in the solution (this would need to be handled elsewhere)
+        # For now, we just return the code
+        other_info = {
+            "algorithm": algorithm
+        }
+        return Solution(code, other_info=other_info)

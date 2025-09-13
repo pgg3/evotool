@@ -1,22 +1,20 @@
 from abc import ABC, abstractmethod
 from typing import List
 from .base_evaluator import Solution
+from .base_adapter import BaseAdapter
 
 
-class EohAdapter(ABC):
+class EohAdapter(BaseAdapter):
     """Base adapter for EoH (Evolution of Heuristics) algorithm"""
     
     def __init__(self, task_info: dict):
-        self.task_info = task_info
+        BaseAdapter.__init__(self, task_info)
 
-    @abstractmethod
-    def _get_base_task_description(self) -> str:
-        pass
-    
-    @abstractmethod
     def make_init_sol(self) -> Solution:
-        """Create initial solution"""
-        pass
+        other_info = {'algorithm': "None"}
+        init_sol = self.make_init_sol_wo_other_info()
+        init_sol.other_info = other_info
+        return init_sol
     
     @abstractmethod
     def get_prompt_i1(self) -> List[dict]:
@@ -41,9 +39,4 @@ class EohAdapter(ABC):
     @abstractmethod
     def get_prompt_m2(self, individual: Solution) -> List[dict]:
         """Generate M2 (parameter mutation) prompt"""
-        pass
-    
-    @abstractmethod
-    def parse_response(self, response_str: str) -> Solution:
-        """Parse LLM response to extract (code, algorithm) tuple"""
         pass

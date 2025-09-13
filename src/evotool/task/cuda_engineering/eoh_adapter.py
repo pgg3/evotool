@@ -1,6 +1,7 @@
 import re
 from evotool.task.base_task import EohAdapter, Solution
 from typing import List
+from .cuda_adapter import CudaAdapter
 
 def _make_task_description(operation_name: str, GPU_TYPE: str, CUDA_VER: str, cuda_code: str, description_of_code: str=None, run_time: float=None) -> str:
     return f"""You are a Machine Learning Engineer trying to reduce the runtime of a {operation_name} kernel in CUDA. 
@@ -19,9 +20,9 @@ Here is a reference implementation of a working CUDA kernel proposal with runtim
 """
 
 
-class EohCudaAdapter(EohAdapter):
+class EohCudaAdapter(CudaAdapter, EohAdapter):
     def __init__(self, task_info: dict):
-        super().__init__(task_info)
+        EohAdapter.__init__(self, task_info)
     
     def _get_base_task_description(self) -> str:
         """Get the base task description using task info"""
@@ -39,20 +40,6 @@ class EohCudaAdapter(EohAdapter):
             description_of_code="baseline implementation",
             run_time=baseline_runtime
         )
-
-    def make_init_sol(self) -> Solution:
-        """Create initial solution from the baseline CUDA code"""
-        from evotool.task.base_task import EvaluationResult
-
-        other_info={'algorithm': "None"}
-        init_sol = Solution(self.task_info["cuda_code"], other_info)
-        evaluation_res = EvaluationResult(
-            valid=True,
-            score=-self.task_info["cuda_info"]["runtime"],  # Negative because lower runtime is better
-            additional_info=dict()
-        )
-        init_sol.evaluation_res = evaluation_res
-        return init_sol
 
     def get_prompt_i1(self) -> List[dict]:
         """Generate initialization prompt (I1 operator)"""

@@ -11,8 +11,8 @@ class PythonEvaluator(BaseEvaluator):
             task_info: Task information dictionary
             timeout_seconds: Execution timeout
         """
-        super().__init__(timeout_seconds)
-        self.task_info = task_info
+        super().__init__(task_info)
+        self.timeout_seconds = timeout_seconds
     
     def evaluate_code(self, candidate_code: str) -> EvaluationResult:
         """Evaluate Python code.
@@ -29,5 +29,5 @@ class PythonEvaluator(BaseEvaluator):
         return EvaluationResult(
             valid=True,
             score=1.0,
-            additional_info_dict={'message': 'Default evaluation - please override evaluate_code method'}
+            additional_info={'message': 'Default evaluation - please override evaluate_code method'}
         )

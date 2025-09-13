@@ -3,23 +3,19 @@ from typing import List
 from abc import abstractmethod
 
 from .base_evaluator import Solution, EvaluationResult
+from .base_adapter import BaseAdapter
 
 
 
-class Es1p1Adapter(abc.ABC):
+class Es1p1Adapter(BaseAdapter):
     """ES(1+1) Adapter"""
     def __init__(self, task_info: dict):
-        self.task_info = task_info
+        BaseAdapter.__init__(self, task_info)
 
-    @abstractmethod
     def make_init_sol(self) -> Solution:
-        """Create initial solution from task info."""
-        raise NotImplementedError()
+        return self.make_init_sol_wo_other_info()
 
     @abstractmethod
     def get_prompt(self, best_sol:Solution) -> List[dict]:
         raise NotImplementedError()
 
-    @abstractmethod
-    def parse_response(self, response_str: str) -> Solution:
-        raise NotImplementedError()

@@ -3,3 +3,4 @@ from .es_1p1_adapter import Es1p1CudaAdapter
 from .funsearch_adapter import FunSearchCudaAdapter
 from .eoh_adapter import EohCudaAdapter
 from .evoengineer_adapter import EvoEngineerCudaAdapter
+from .cuda_adapter import CudaAdapter

@@ -1,24 +1,14 @@
 import re
 from evotool.task.base_task import FunSearchAdapter, Solution, EvaluationResult
 from typing import List
+from evotool.task.cuda_engineering.cuda_adapter import CudaAdapter
 
 
-class FunSearchCudaAdapter(FunSearchAdapter):
+class FunSearchCudaAdapter(CudaAdapter, FunSearchAdapter):
     """FunSearch adapter for CUDA kernel optimization"""
     
     def __init__(self, task_info: dict):
         super().__init__(task_info)
-    
-    def make_init_sol(self) -> Solution:
-        """Create initial solution from cuda_code"""
-        init_sol = Solution(self.task_info["cuda_code"])
-        evaluation_res = EvaluationResult(
-            valid=True,
-            score=-self.task_info["cuda_info"]["runtime"],
-            additional_info=dict()
-        )
-        init_sol.evaluation_res = evaluation_res
-        return init_sol
     
     def get_prompt(self, solutions: List[Solution]) -> List[dict]:
         """Generate prompt based on multiple solutions (similar to reference implementation)"""

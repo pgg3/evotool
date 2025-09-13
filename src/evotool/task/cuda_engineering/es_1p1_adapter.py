@@ -2,20 +2,12 @@ import re
 from evotool.task.base_task import Es1p1Adapter, Solution, EvaluationResult
 from  typing import List
 
+from evotool.task.cuda_engineering import CudaAdapter
 
-class Es1p1CudaAdapter(Es1p1Adapter):
+
+class Es1p1CudaAdapter(CudaAdapter, Es1p1Adapter):
     def __init__(self, task_info: dict):
-        super().__init__(task_info)
-
-    def make_init_sol(self) -> Solution:
-        init_sol = Solution(self.task_info["cuda_code"])
-        evaluation_res = EvaluationResult(
-            valid=True,
-            score=-self.task_info["cuda_info"]["runtime"],
-            additional_info=dict()
-        )
-        init_sol.evaluation_res = evaluation_res
-        return init_sol
+        Es1p1Adapter.__init__(self, task_info)
 
     def get_prompt(self, best_sol:Solution) -> List[dict]:
         prompt = f"""
